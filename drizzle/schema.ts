@@ -34,7 +34,8 @@ export const mcpConnectors = mysqlTable("mcp_connectors", {
     "payment",
     "analytics",
     "automation",
-    "intelligence"
+    "intelligence",
+    "media_generation"
   ]).notNull(),
   description: text("description"),
   isActive: boolean("isActive").default(true).notNull(),

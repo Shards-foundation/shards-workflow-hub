@@ -8,7 +8,7 @@ import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Workflows from "./pages/Workflows";
 import WorkflowDetail from "./pages/WorkflowDetail";
-import MCPConnectors from "./pages/MCPConnectors";
+import Connectors from "./pages/Connectors";
 import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Analytics from "./pages/Analytics";
@@ -20,7 +20,7 @@ function Router() {
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/workflows"} component={Workflows} />
       <Route path={"/workflows/:id"} component={WorkflowDetail} />
-      <Route path={"/connectors"} component={MCPConnectors} />
+      <Route path={"/connectors"} component={Connectors} />
       <Route path={"/clients"} component={Clients} />
       <Route path={"/projects"} component={Projects} />
       <Route path={"/analytics"} component={Analytics} />

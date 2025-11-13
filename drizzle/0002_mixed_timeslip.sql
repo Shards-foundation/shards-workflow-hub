@@ -1,0 +1,1 @@
+ALTER TABLE `mcp_connectors` MODIFY COLUMN `category` enum('project_management','communication','content_creation','development','payment','analytics','automation','intelligence','media_generation') NOT NULL;
