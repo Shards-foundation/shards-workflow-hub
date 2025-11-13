@@ -571,9 +571,25 @@ export const appRouter = router({
         // Get conversation history
         const messages = await db.getConversationMessages(input.conversationId);
         
-        // For now, return a simple response
-        // In the next phase, we'll implement actual AI provider integrations
-        const response = `[${model.displayName}] This is a placeholder response. AI provider integration coming in next phase.`;
+        // Build message history for AI provider
+        const { callAIModel } = await import("./ai-providers");
+        
+        const chatMessages = [
+          ...(conversation.systemPrompt ? [{ role: "system" as const, content: conversation.systemPrompt }] : []),
+          ...messages.map(m => ({
+            role: m.role as "system" | "user" | "assistant",
+            content: m.content,
+          })),
+          { role: "user" as const, content: input.content },
+        ];
+        
+        // Call AI provider
+        const response = await callAIModel(model.provider, {
+          model: model.modelId,
+          messages: chatMessages,
+          temperature: (conversation.config as any)?.temperature || 0.7,
+          maxTokens: (conversation.config as any)?.maxTokens || 2000,
+        });
         
         // Save assistant message
         await db.createMessage({
