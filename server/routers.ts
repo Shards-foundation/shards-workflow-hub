@@ -470,6 +470,131 @@ export const appRouter = router({
         return { success: true };
       }),
   }),
+  // ============= AI Models Management =============
+  aiModels: router({
+    list: protectedProcedure.query(async () => {
+      return await db.getAllAiModels();
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getAiModelById(input.id);
+      }),
+    
+    getByCategory: protectedProcedure
+      .input(z.object({ category: z.string() }))
+      .query(async ({ input }) => {
+        return await db.getAiModelsByCategory(input.category);
+      }),
+  }),
+
+  // ============= AI Conversations Management =============
+  aiConversations: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getAllConversations(ctx.user.id);
+    }),
+    
+    getById: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getConversationById(input.id);
+      }),
+    
+    create: protectedProcedure
+      .input(z.object({
+        modelId: z.number(),
+        title: z.string().optional(),
+        systemPrompt: z.string().optional(),
+        config: z.record(z.string(), z.any()).optional(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        const result = await db.createConversation({
+          ...input,
+          userId: ctx.user.id,
+        });
+        return { success: true, id: Number(result[0].insertId) };
+      }),
+    
+    update: protectedProcedure
+      .input(z.object({
+        id: z.number(),
+        title: z.string().optional(),
+      }))
+      .mutation(async ({ input }) => {
+        const { id, ...data } = input;
+        await db.updateConversation(id, data);
+        return { success: true };
+      }),
+    
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ input }) => {
+        await db.deleteConversation(input.id);
+        return { success: true };
+      }),
+  }),
+
+  // ============= AI Messages Management =============
+  aiMessages: router({
+    list: protectedProcedure
+      .input(z.object({ conversationId: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getConversationMessages(input.conversationId);
+      }),
+    
+    send: protectedProcedure
+      .input(z.object({
+        conversationId: z.number(),
+        content: z.string(),
+      }))
+      .mutation(async ({ input, ctx }) => {
+        // Save user message
+        await db.createMessage({
+          conversationId: input.conversationId,
+          role: "user",
+          content: input.content,
+        });
+        
+        // Get conversation details
+        const conversation = await db.getConversationById(input.conversationId);
+        if (!conversation) {
+          throw new Error("Conversation not found");
+        }
+        
+        // Get model details
+        const model = await db.getAiModelById(conversation.modelId);
+        if (!model) {
+          throw new Error("Model not found");
+        }
+        
+        // Get conversation history
+        const messages = await db.getConversationMessages(input.conversationId);
+        
+        // For now, return a simple response
+        // In the next phase, we'll implement actual AI provider integrations
+        const response = `[${model.displayName}] This is a placeholder response. AI provider integration coming in next phase.`;
+        
+        // Save assistant message
+        await db.createMessage({
+          conversationId: input.conversationId,
+          role: "assistant",
+          content: response,
+          metadata: {
+            model: model.modelId,
+            tokens: 0,
+          },
+        });
+        
+        // Update conversation
+        await db.updateConversation(input.conversationId, {
+          messageCount: messages.length + 2,
+          lastMessageAt: new Date(),
+        });
+        
+        return { success: true, response };
+      }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

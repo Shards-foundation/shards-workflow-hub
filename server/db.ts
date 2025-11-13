@@ -483,3 +483,106 @@ export async function getDashboardStats() {
     activeConnectors: activeConnectorCount.count,
   };
 }
+
+// ============= AI Models =============
+export async function getAllAiModels() {
+  const db = await getDb();
+  if (!db) return [];
+  const { aiModels } = await import("../drizzle/schema");
+  return await db.select().from(aiModels);
+}
+
+export async function getAiModelById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { aiModels } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select().from(aiModels).where(eq(aiModels.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getAiModelsByCategory(category: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const { aiModels } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  return await db.select().from(aiModels).where(eq(aiModels.category, category as any));
+}
+
+// ============= AI Conversations =============
+export async function getAllConversations(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { aiConversations } = await import("../drizzle/schema");
+  const { eq, desc } = await import("drizzle-orm");
+  return await db.select().from(aiConversations)
+    .where(eq(aiConversations.userId, userId))
+    .orderBy(desc(aiConversations.updatedAt));
+}
+
+export async function getConversationById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { aiConversations } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select().from(aiConversations).where(eq(aiConversations.id, id)).limit(1);
+  return result[0];
+}
+
+export async function createConversation(data: {
+  userId: number;
+  modelId: number;
+  title?: string;
+  systemPrompt?: string;
+  config?: any;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { aiConversations } = await import("../drizzle/schema");
+  return await db.insert(aiConversations).values(data);
+}
+
+export async function updateConversation(id: number, data: {
+  title?: string;
+  messageCount?: number;
+  lastMessageAt?: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { aiConversations } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  return await db.update(aiConversations).set(data).where(eq(aiConversations.id, id));
+}
+
+export async function deleteConversation(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { aiConversations, aiMessages } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  
+  // Delete all messages first
+  await db.delete(aiMessages).where(eq(aiMessages.conversationId, id));
+  // Then delete conversation
+  return await db.delete(aiConversations).where(eq(aiConversations.id, id));
+}
+
+// ============= AI Messages =============
+export async function getConversationMessages(conversationId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { aiMessages } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  return await db.select().from(aiMessages).where(eq(aiMessages.conversationId, conversationId));
+}
+
+export async function createMessage(data: {
+  conversationId: number;
+  role: "user" | "assistant" | "system";
+  content: string;
+  metadata?: any;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { aiMessages } = await import("../drizzle/schema");
+  return await db.insert(aiMessages).values(data);
+}

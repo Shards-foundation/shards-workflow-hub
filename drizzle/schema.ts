@@ -261,3 +261,81 @@ export const systemLogs = mysqlTable("system_logs", {
 
 export type SystemLog = typeof systemLogs.$inferSelect;
 export type InsertSystemLog = typeof systemLogs.$inferInsert;
+
+/**
+ * AI Model Configurations
+ * Stores available AI models and their settings
+ */
+export const aiModels = mysqlTable("ai_models", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 200 }).notNull(),
+  provider: varchar("provider", { length: 100 }).notNull(),
+  modelId: varchar("modelId", { length: 200 }).notNull(),
+  category: mysqlEnum("category", ["chat", "completion", "embedding", "image", "audio", "video"]).default("chat").notNull(),
+  capabilities: json("capabilities").$type<{
+    streaming?: boolean;
+    functionCalling?: boolean;
+    vision?: boolean;
+    maxTokens?: number;
+    contextWindow?: number;
+  }>(),
+  defaultConfig: json("defaultConfig").$type<{
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+  }>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiModel = typeof aiModels.$inferSelect;
+export type InsertAiModel = typeof aiModels.$inferInsert;
+
+/**
+ * AI Conversations
+ * Stores chat conversations with AI models
+ */
+export const aiConversations = mysqlTable("ai_conversations", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  title: varchar("title", { length: 500 }),
+  modelId: int("modelId").notNull(),
+  systemPrompt: text("systemPrompt"),
+  config: json("config").$type<{
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+  }>(),
+  messageCount: int("messageCount").default(0).notNull(),
+  lastMessageAt: timestamp("lastMessageAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AiConversation = typeof aiConversations.$inferSelect;
+export type InsertAiConversation = typeof aiConversations.$inferInsert;
+
+/**
+ * AI Messages
+ * Stores individual messages in conversations
+ */
+export const aiMessages = mysqlTable("ai_messages", {
+  id: int("id").autoincrement().primaryKey(),
+  conversationId: int("conversationId").notNull(),
+  role: mysqlEnum("role", ["user", "assistant", "system"]).notNull(),
+  content: text("content").notNull(),
+  metadata: json("metadata").$type<{
+    model?: string;
+    tokens?: number;
+    finishReason?: string;
+    error?: string;
+  }>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AiMessage = typeof aiMessages.$inferSelect;
+export type InsertAiMessage = typeof aiMessages.$inferInsert;
