@@ -339,3 +339,73 @@ export const aiMessages = mysqlTable("ai_messages", {
 
 export type AiMessage = typeof aiMessages.$inferSelect;
 export type InsertAiMessage = typeof aiMessages.$inferInsert;
+
+/**
+ * Subscription Plans
+ * Defines available subscription tiers
+ */
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("displayName", { length: 200 }).notNull(),
+  description: text("description"),
+  stripePriceId: varchar("stripePriceId", { length: 200 }),
+  price: int("price").notNull(), // in cents
+  interval: mysqlEnum("interval", ["month", "year"]).notNull(),
+  features: json("features").$type<{
+    aiModelsAccess: string[]; // model IDs or "all"
+    maxWorkflows: number | "unlimited";
+    maxExecutionsPerMonth: number | "unlimited";
+    prioritySupport: boolean;
+    customIntegrations: boolean;
+    teamCollaboration: boolean;
+    apiAccess: boolean;
+  }>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  sortOrder: int("sortOrder").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+
+/**
+ * User Subscriptions
+ * Tracks user subscription status
+ */
+export const userSubscriptions = mysqlTable("user_subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  planId: int("planId").notNull(),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 200 }),
+  stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 200 }),
+  status: mysqlEnum("status", ["active", "canceled", "past_due", "trialing", "incomplete"]).default("active").notNull(),
+  currentPeriodStart: timestamp("currentPeriodStart"),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  cancelAtPeriodEnd: boolean("cancelAtPeriodEnd").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = typeof userSubscriptions.$inferInsert;
+
+/**
+ * Payment History
+ * Tracks completed payments (minimal data, query Stripe for details)
+ */
+export const paymentHistory = mysqlTable("payment_history", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  stripePaymentIntentId: varchar("stripePaymentIntentId", { length: 200 }),
+  stripeInvoiceId: varchar("stripeInvoiceId", { length: 200 }),
+  amount: int("amount").notNull(), // in cents
+  currency: varchar("currency", { length: 10 }).default("usd").notNull(),
+  status: varchar("status", { length: 50 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PaymentHistory = typeof paymentHistory.$inferSelect;
+export type InsertPaymentHistory = typeof paymentHistory.$inferInsert;

@@ -595,6 +595,79 @@ export const appRouter = router({
         return { success: true, response };
       }),
   }),
+  // ============= Subscription Plans =============
+  subscriptionPlans: router({
+    list: publicProcedure.query(async () => {
+      return await db.getAllSubscriptionPlans();
+    }),
+    
+    getById: publicProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ input }) => {
+        return await db.getSubscriptionPlanById(input.id);
+      }),
+  }),
+
+  // ============= User Subscriptions =============
+  subscription: router({
+    current: protectedProcedure.query(async ({ ctx }) => {
+      const subscription = await db.getUserSubscription(ctx.user.id);
+      if (!subscription) {
+        // Return free plan if no subscription
+        const freePlan = await db.getSubscriptionPlanByName("free");
+        return { plan: freePlan, subscription: null };
+      }
+      const plan = await db.getSubscriptionPlanById(subscription.planId);
+      return { plan, subscription };
+    }),
+    
+    createCheckout: protectedProcedure
+      .input(z.object({ planId: z.number() }))
+      .mutation(async ({ input, ctx }) => {
+        const plan = await db.getSubscriptionPlanById(input.planId);
+        if (!plan || !plan.stripePriceId) {
+          throw new Error("Invalid plan or plan not available for purchase");
+        }
+        
+        const { createCheckoutSession } = await import("./stripe");
+        const origin = ctx.req.headers.origin || "http://localhost:3000";
+        
+        const session = await createCheckoutSession({
+          priceId: plan.stripePriceId,
+          userId: ctx.user.id,
+          userEmail: ctx.user.email || "",
+          userName: ctx.user.name || undefined,
+          successUrl: `${origin}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
+          cancelUrl: `${origin}/pricing`,
+        });
+        
+        return { checkoutUrl: session.url };
+      }),
+    
+    createPortalSession: protectedProcedure.mutation(async ({ ctx }) => {
+      const subscription = await db.getUserSubscription(ctx.user.id);
+      if (!subscription || !subscription.stripeCustomerId) {
+        throw new Error("No active subscription found");
+      }
+      
+      const { createCustomerPortalSession } = await import("./stripe");
+      const origin = ctx.req.headers.origin || "http://localhost:3000";
+      
+      const session = await createCustomerPortalSession({
+        stripeCustomerId: subscription.stripeCustomerId,
+        returnUrl: `${origin}/subscription`,
+      });
+      
+      return { portalUrl: session.url };
+    }),
+  }),
+
+  // ============= Payment History =============
+  payments: router({
+    history: protectedProcedure.query(async ({ ctx }) => {
+      return await db.getUserPaymentHistory(ctx.user.id);
+    }),
+  }),
 });
 
 export type AppRouter = typeof appRouter;

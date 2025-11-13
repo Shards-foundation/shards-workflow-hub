@@ -13,6 +13,8 @@ import Clients from "./pages/Clients";
 import Projects from "./pages/Projects";
 import Analytics from "./pages/Analytics";
 import AIChat from "./pages/AIChat";
+import Pricing from "./pages/Pricing";
+import Subscription from "./pages/Subscription";
 
 function Router() {
   return (
@@ -26,6 +28,8 @@ function Router() {
       <Route path={"/projects"} component={Projects} />
         <Route path="/analytics" component={Analytics} />
       <Route path="/ai-chat" component={AIChat} />
+      <Route path="/pricing" component={Pricing} />
+      <Route path="/subscription" component={Subscription} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

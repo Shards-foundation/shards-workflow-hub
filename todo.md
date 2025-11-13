@@ -75,3 +75,16 @@
 - [ ] Add model configuration (temperature, max tokens, system prompts)
 - [ ] Create AI model testing and benchmarking page
 - [ ] Integrate AI models into workflow automation
+
+## Phase 9: Stripe Payment Integration
+- [x] Add Stripe feature to project with webdev_add_feature
+- [x] Create subscription plans database table
+- [x] Create customer subscriptions tracking table
+- [x] Define subscription tiers (Free, Pro, Enterprise)
+- [x] Build pricing page with plan comparison
+- [x] Implement Stripe checkout flow
+- [x] Add webhook handlers for subscription events
+- [x] Create customer portal for subscription management
+- [x] Add payment history and invoices page
+- [ ] Implement usage-based billing for API calls
+- [ ] Add subscription status checks to AI chat and workflows

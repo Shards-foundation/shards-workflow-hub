@@ -586,3 +586,94 @@ export async function createMessage(data: {
   const { aiMessages } = await import("../drizzle/schema");
   return await db.insert(aiMessages).values(data);
 }
+
+// ============= Subscription Plans =============
+export async function getAllSubscriptionPlans() {
+  const db = await getDb();
+  if (!db) return [];
+  const { subscriptionPlans } = await import("../drizzle/schema");
+  const { asc } = await import("drizzle-orm");
+  return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true)).orderBy(asc(subscriptionPlans.sortOrder));
+}
+
+export async function getSubscriptionPlanById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { subscriptionPlans } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id)).limit(1);
+  return result[0];
+}
+
+export async function getSubscriptionPlanByName(name: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { subscriptionPlans } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.name, name)).limit(1);
+  return result[0];
+}
+
+// ============= User Subscriptions =============
+export async function getUserSubscription(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const { userSubscriptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  const result = await db.select().from(userSubscriptions).where(eq(userSubscriptions.userId, userId)).limit(1);
+  return result[0];
+}
+
+export async function createUserSubscription(data: {
+  userId: number;
+  planId: number;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
+  status?: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { userSubscriptions } = await import("../drizzle/schema");
+  return await db.insert(userSubscriptions).values(data as any);
+}
+
+export async function updateUserSubscription(userId: number, data: {
+  planId?: number;
+  status?: string;
+  currentPeriodStart?: Date;
+  currentPeriodEnd?: Date;
+  cancelAtPeriodEnd?: boolean;
+  stripeSubscriptionId?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { userSubscriptions } = await import("../drizzle/schema");
+  const { eq } = await import("drizzle-orm");
+  return await db.update(userSubscriptions).set(data as any).where(eq(userSubscriptions.userId, userId));
+}
+
+// ============= Payment History =============
+export async function getUserPaymentHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const { paymentHistory } = await import("../drizzle/schema");
+  const { eq, desc } = await import("drizzle-orm");
+  return await db.select().from(paymentHistory).where(eq(paymentHistory.userId, userId)).orderBy(desc(paymentHistory.createdAt));
+}
+
+export async function createPaymentRecord(data: {
+  userId: number;
+  stripePaymentIntentId?: string;
+  stripeInvoiceId?: string;
+  amount: number;
+  currency?: string;
+  status: string;
+  description?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const { paymentHistory } = await import("../drizzle/schema");
+  return await db.insert(paymentHistory).values(data);
+}
