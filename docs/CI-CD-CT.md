@@ -4,6 +4,8 @@ This repository provides reusable GitHub Actions workflows for Node.js validatio
 
 ## 1. Continuous integration (CI)
 
+The hub itself calls its reusable Node CI from `.github/workflows/ci.yml`. It runs the repository's TypeScript check and production build. Unit tests are currently disabled for this repository because no unit-test files are present; consuming repositories should keep `test-script: test` enabled when they have a test suite.
+
 Create `.github/workflows/ci.yml` in a consuming repository:
 
 ```yaml
