@@ -13,11 +13,6 @@ on:
         type: string
         required: false
         default: pnpm
-      pnpm-version:
-        description: pnpm version when package-manager is pnpm
-        type: string
-        required: false
-        default: "10.4.1"
       install-command:
         description: Optional command to install browser dependencies; empty uses Playwright Chromium
         type: string
@@ -61,8 +56,6 @@ jobs:
       - name: Set up pnpm
         if: inputs.package-manager == 'pnpm'
         uses: pnpm/action-setup@v4
-        with:
-          version: ${{ inputs.pnpm-version }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
