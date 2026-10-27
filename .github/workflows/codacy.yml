@@ -47,6 +47,7 @@ jobs:
       - name: Assign unique SARIF categories
         shell: bash
         run: |
+          sudo chown "$(id -u):$(id -g)" results.sarif
           chmod u+w results.sarif
           node <<'NODE'
           const fs = require('node:fs');
