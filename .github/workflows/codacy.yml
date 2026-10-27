@@ -44,7 +44,7 @@ jobs:
           fi
           node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('results.sarif','utf8')); if(s.version!=='2.1.0'||!Array.isArray(s.runs)||s.runs.length===0) { console.error('SARIF must be version 2.1.0 and contain at least one run'); process.exit(1); }"
 
-      - name: Assign unique SARIF categories
+      - name: Split SARIF into GitHub-compatible batches
         shell: bash
         run: |
           sudo chown "$(id -u):$(id -g)" results.sarif
@@ -52,17 +52,34 @@ jobs:
           node <<'NODE'
           const fs = require('node:fs');
           const report = JSON.parse(fs.readFileSync('results.sarif', 'utf8'));
-          report.runs = report.runs.map((run, index) => {
-            run.automationDetails = {
+          const maxRunsPerUpload = 20;
+          report.runs = report.runs.map((run, index) => ({
+            ...run,
+            automationDetails: {
               ...(run.automationDetails || {}),
               id: `codacy/${run.tool?.driver?.name || 'tool'}-${index + 1}`
+            }
+          }));
+          for (let start = 0; start < report.runs.length; start += maxRunsPerUpload) {
+            const batch = {
+              ...report,
+              runs: report.runs.slice(start, start + maxRunsPerUpload)
             };
-            return run;
-          });
-          fs.writeFileSync('results.sarif', JSON.stringify(report));
+            const output = `results-part-${Math.floor(start / maxRunsPerUpload) + 1}.sarif`;
+            fs.writeFileSync(output, JSON.stringify(batch));
+            console.log(`Wrote ${output} with ${batch.runs.length} runs`);
+          }
           NODE
 
-      - name: Upload SARIF results
+      - name: Upload SARIF results (batch 1)
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: results.sarif
+          sarif_file: results-part-1.sarif
+          category: codacy-batch-1
+
+      - name: Upload SARIF results (batch 2)
+        if: ${{ hashFiles('results-part-2.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: results-part-2.sarif
+          category: codacy-batch-2
