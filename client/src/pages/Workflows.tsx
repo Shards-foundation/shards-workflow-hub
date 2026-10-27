@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Activity, Clock, Play, Pause, Trash2, Plus, CheckCircle2, XCircle, Workflow as WorkflowIcon } from "lucide-react";
+import { Activity, Clock, Play, Pause, Plus, CheckCircle2, Workflow as WorkflowIcon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -35,13 +35,6 @@ export default function Workflows() {
   const updateStatus = trpc.workflows.updateStatus.useMutation({
     onSuccess: () => {
       toast.success("Workflow status updated");
-      refetch();
-    }
-  });
-
-  const deleteWorkflow = trpc.workflows.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Workflow deleted");
       refetch();
     }
   });
@@ -207,17 +200,7 @@ export default function Workflows() {
                         Activate
                       </Button>
                     )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (confirm(`Delete workflow "${workflow.name}"?`)) {
-                          deleteWorkflow.mutate({ id: workflow.id });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>
