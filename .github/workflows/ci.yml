@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  pull_request:
+    branches: ["master"]
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/reusable-ci-node.yml
+    with:
+      node-version: "22"
+      package-manager: pnpm
+      pnpm-version: "10.4.1"
+      lint-script: ""
+      typecheck-script: check
+      # This repository does not yet contain a unit-test suite.
+      test-script: ""
+      build-script: build
