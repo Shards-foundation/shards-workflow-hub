@@ -1,0 +1,12 @@
+max-files-changed: 100
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: "**/*.md"
+
+enhancement:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "client/src/**"
+          - "server/**"
+          - "shared/**"

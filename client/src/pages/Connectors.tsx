@@ -33,10 +33,11 @@ export default function Connectors() {
     : [];
 
   const connectorsByCategory = filteredConnectors?.reduce((acc, c) => {
-    if (!acc[c.category]) acc[c.category] = [];
-    acc[c.category].push(c);
+    const categoryConnectors = acc[c.category] ?? [];
+    categoryConnectors.push(c);
+    acc[c.category] = categoryConnectors;
     return acc;
-  }, {} as Record<string, typeof connectors>);
+  }, {} as Record<string, NonNullable<typeof connectors>>);
 
   if (isLoading) {
     return (

@@ -1,0 +1,49 @@
+name: Run Datadog Synthetic tests
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configuration-status:
+    name: Datadog configuration status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain integration status
+        env:
+          DATADOG_ENABLED: ${{ vars.DATADOG_SYNTHETICS_ENABLED }}
+        run: |
+          if [ "$DATADOG_ENABLED" = "true" ]; then
+            echo "Datadog Synthetics is enabled; the authenticated test job will run."
+          else
+            echo "::notice::Datadog Synthetics skipped: set repository variable DATADOG_SYNTHETICS_ENABLED=true and configure DD_API_KEY and DD_APP_KEY secrets to run real tests."
+          fi
+
+  synthetics:
+    name: Datadog Synthetic tests
+    needs: configuration-status
+    if: ${{ vars.DATADOG_SYNTHETICS_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate credentials are configured
+        env:
+          DD_API_KEY: ${{ secrets.DD_API_KEY }}
+          DD_APP_KEY: ${{ secrets.DD_APP_KEY }}
+        run: |
+          test -n "$DD_API_KEY" || { echo "::error::Missing DD_API_KEY secret."; exit 1; }
+          test -n "$DD_APP_KEY" || { echo "::error::Missing DD_APP_KEY secret."; exit 1; }
+
+      - uses: actions/checkout@v5
+
+      - name: Run Datadog Synthetic tests
+        uses: DataDog/synthetics-ci-github-action@87b505388a22005bb8013481e3f73a367b9a53eb # v1.4.0
+        with:
+          api_key: ${{ secrets.DD_API_KEY }}
+          app_key: ${{ secrets.DD_APP_KEY }}
+          test_search_query: "tag:e2e-tests"

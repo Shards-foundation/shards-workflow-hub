@@ -1,0 +1,64 @@
+name: APIsec
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    branches: ["master"]
+  schedule:
+    - cron: "32 12 * * 5"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  configuration-status:
+    name: APIsec configuration status
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain integration status
+        env:
+          APISEC_ENABLED: ${{ vars.APISEC_ENABLED }}
+        run: |
+          if [ "$APISEC_ENABLED" = "true" ]; then
+            echo "APIsec integration is enabled; the authenticated scan job will run."
+          else
+            echo "::notice::APIsec scan skipped: set repository variable APISEC_ENABLED=true and configure APISEC_USERNAME and APISEC_PASSWORD secrets to enable real scans."
+          fi
+
+  apisec-scan:
+    name: APIsec scan
+    needs: configuration-status
+    if: ${{ vars.APISEC_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    steps:
+      - name: Validate credentials are configured
+        env:
+          APISEC_USERNAME: ${{ secrets.APISEC_USERNAME }}
+          APISEC_PASSWORD: ${{ secrets.APISEC_PASSWORD }}
+        run: |
+          test -n "$APISEC_USERNAME" || { echo "::error::Missing APISEC_USERNAME secret."; exit 1; }
+          test -n "$APISEC_PASSWORD" || { echo "::error::Missing APISEC_PASSWORD secret."; exit 1; }
+
+      - name: Run APIsec scan
+        uses: apisec-inc/apisec-run-scan@025432089674a28ba8fb55f8ab06c10215e772ea
+        with:
+          apisec-username: ${{ secrets.APISEC_USERNAME }}
+          apisec-password: ${{ secrets.APISEC_PASSWORD }}
+          apisec-project: "VAmPI"
+          sarif-result-file: "apisec-results.sarif"
+
+      - name: Validate SARIF output
+        run: |
+          test -s apisec-results.sarif || { echo "::error::APIsec did not produce apisec-results.sarif."; exit 1; }
+          node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('apisec-results.sarif','utf8')); if(s.version!=='2.1.0'||!Array.isArray(s.runs)||s.runs.length===0) process.exit(1);"
+
+      - name: Upload results
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: ./apisec-results.sarif
