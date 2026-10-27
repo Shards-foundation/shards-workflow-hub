@@ -1,0 +1,132 @@
+name: Reusable CI - Node.js
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version
+        type: string
+        required: false
+        default: "22"
+      package-manager:
+        description: One of pnpm, npm, or yarn
+        type: string
+        required: false
+        default: pnpm
+      lint-script:
+        description: package.json script name; empty disables lint
+        type: string
+        required: false
+        default: ""
+      typecheck-script:
+        description: package.json script name; empty disables type checking
+        type: string
+        required: false
+        default: check
+      test-script:
+        description: package.json script name; empty disables unit tests
+        type: string
+        required: false
+        default: test
+      build-script:
+        description: package.json script name; empty disables build
+        type: string
+        required: false
+        default: build
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-inputs:
+    name: Validate CI configuration
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate package manager
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm|npm|yarn) ;;
+            *) echo "::error::package-manager must be pnpm, npm, or yarn."; exit 1 ;;
+          esac
+
+  ci:
+    name: Install, check, test and build
+    needs: validate-inputs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+
+      - name: Install dependencies
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm install --frozen-lockfile ;;
+            npm) npm ci ;;
+            yarn) corepack enable && yarn install --frozen-lockfile ;;
+          esac
+
+      - name: Lint
+        if: inputs.lint-script != ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          SCRIPT_NAME: ${{ inputs.lint-script }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm run "$SCRIPT_NAME" ;;
+            npm) npm run "$SCRIPT_NAME" ;;
+            yarn) yarn run "$SCRIPT_NAME" ;;
+          esac
+
+      - name: Type check
+        if: inputs.typecheck-script != ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          SCRIPT_NAME: ${{ inputs.typecheck-script }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm run "$SCRIPT_NAME" ;;
+            npm) npm run "$SCRIPT_NAME" ;;
+            yarn) yarn run "$SCRIPT_NAME" ;;
+          esac
+
+      - name: Unit tests
+        if: inputs.test-script != ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          SCRIPT_NAME: ${{ inputs.test-script }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm run "$SCRIPT_NAME" ;;
+            npm) npm run "$SCRIPT_NAME" ;;
+            yarn) yarn run "$SCRIPT_NAME" ;;
+          esac
+
+      - name: Build
+        if: inputs.build-script != ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          SCRIPT_NAME: ${{ inputs.build-script }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm run "$SCRIPT_NAME" ;;
+            npm) npm run "$SCRIPT_NAME" ;;
+            yarn) yarn run "$SCRIPT_NAME" ;;
+          esac

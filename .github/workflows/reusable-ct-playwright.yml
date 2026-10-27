@@ -1,0 +1,119 @@
+name: Reusable CT - Playwright end-to-end tests
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version
+        type: string
+        required: false
+        default: "22"
+      package-manager:
+        description: One of pnpm, npm, or yarn
+        type: string
+        required: false
+        default: pnpm
+      install-command:
+        description: Optional command to install browser dependencies; empty uses Playwright Chromium
+        type: string
+        required: false
+        default: ""
+      test-command:
+        description: Shell command that runs the end-to-end suite
+        type: string
+        required: false
+        default: ""
+      artifact-name:
+        description: Name for retained test evidence
+        type: string
+        required: false
+        default: playwright-results
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ct-playwright-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  end-to-end:
+    name: Playwright end-to-end tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+
+      - name: Validate package manager
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm|npm|yarn) ;;
+            *) echo "::error::package-manager must be pnpm, npm, or yarn."; exit 1 ;;
+          esac
+
+      - name: Set up pnpm
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: ${{ inputs.package-manager }}
+
+      - name: Install dependencies
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm install --frozen-lockfile ;;
+            npm) npm ci ;;
+            yarn) corepack enable && yarn install --frozen-lockfile ;;
+          esac
+
+      - name: Install browser dependencies
+        if: inputs.install-command == ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm exec playwright install --with-deps chromium ;;
+            npm) npx playwright install --with-deps chromium ;;
+            yarn) yarn playwright install --with-deps chromium ;;
+          esac
+
+      - name: Install custom browser dependencies
+        if: inputs.install-command != ''
+        env:
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -euo pipefail -c "$INSTALL_COMMAND"
+
+      - name: Run end-to-end tests
+        if: inputs.test-command == ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm exec playwright test ;;
+            npm) npx playwright test ;;
+            yarn) yarn playwright test ;;
+          esac
+
+      - name: Run custom end-to-end command
+        if: inputs.test-command != ''
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -euo pipefail -c "$TEST_COMMAND"
+
+      - name: Upload Playwright evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14

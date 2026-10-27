@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { FolderKanban, Plus, Trash2, Calendar } from "lucide-react";
+import { FolderKanban, Plus, Calendar } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -34,16 +34,13 @@ export default function Projects() {
     }
   });
 
-  const deleteProject = trpc.projects.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Project deleted");
-      refetch();
-    }
-  });
-
   const handleCreate = () => {
     if (!name.trim()) {
       toast.error("Project name is required");
+      return;
+    }
+    if (clientId === undefined) {
+      toast.error("Select a client before creating a project");
       return;
     }
     createProject.mutate({
@@ -110,7 +107,7 @@ export default function Projects() {
                   <Label htmlFor="client">Client</Label>
                   <Select value={clientId?.toString()} onValueChange={(v) => setClientId(parseInt(v))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select client (optional)" />
+                      <SelectValue placeholder="Select client (required)" />
                     </SelectTrigger>
                     <SelectContent>
                       {clients?.map((client) => (
@@ -175,17 +172,7 @@ export default function Projects() {
                     >
                       Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (confirm(`Delete project "${project.name}"?`)) {
-                          deleteProject.mutate({ id: project.id });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>
