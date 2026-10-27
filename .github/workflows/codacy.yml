@@ -44,6 +44,22 @@ jobs:
           fi
           node -e "const fs=require('fs'); const s=JSON.parse(fs.readFileSync('results.sarif','utf8')); if(s.version!=='2.1.0'||!Array.isArray(s.runs)||s.runs.length===0) { console.error('SARIF must be version 2.1.0 and contain at least one run'); process.exit(1); }"
 
+      - name: Assign unique SARIF categories
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('results.sarif', 'utf8'));
+          report.runs = report.runs.map((run, index) => {
+            run.automationDetails = {
+              ...(run.automationDetails || {}),
+              id: `codacy/${run.tool?.driver?.name || 'tool'}-${index + 1}`
+            };
+            return run;
+          });
+          fs.writeFileSync('results.sarif', JSON.stringify(report));
+          NODE
+
       - name: Upload SARIF results
         uses: github/codeql-action/upload-sarif@v4
         with:
