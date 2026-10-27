@@ -82,8 +82,10 @@ jobs:
 
       - name: Install browser dependencies
         if: inputs.install-command == ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
         run: |
-          case "${{ inputs.package-manager }}" in
+          case "$PACKAGE_MANAGER" in
             pnpm) pnpm exec playwright install --with-deps chromium ;;
             npm) npx playwright install --with-deps chromium ;;
             yarn) yarn playwright install --with-deps chromium ;;
