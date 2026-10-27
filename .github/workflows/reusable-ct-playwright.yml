@@ -27,7 +27,7 @@ on:
         description: Shell command that runs the end-to-end suite
         type: string
         required: false
-        default: pnpm exec playwright test
+        default: ""
       artifact-name:
         description: Name for retained test evidence
         type: string
@@ -98,6 +98,18 @@ jobs:
         run: bash -euo pipefail -c "$INSTALL_COMMAND"
 
       - name: Run end-to-end tests
+        if: inputs.test-command == ''
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            pnpm) pnpm exec playwright test ;;
+            npm) npx playwright test ;;
+            yarn) yarn playwright test ;;
+          esac
+
+      - name: Run custom end-to-end command
+        if: inputs.test-command != ''
         env:
           TEST_COMMAND: ${{ inputs.test-command }}
         run: bash -euo pipefail -c "$TEST_COMMAND"
