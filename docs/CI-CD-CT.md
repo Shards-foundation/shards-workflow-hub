@@ -25,14 +25,13 @@ jobs:
     with:
       node-version: "22"
       package-manager: pnpm
-      pnpm-version: "10.4.1"
       lint-script: lint
       typecheck-script: check
       test-script: test
       build-script: build
 ```
 
-Set `lint-script` to an empty string if the project has no lint script. Set any other script input to an empty string only when that stage is intentionally not applicable. The reusable workflow runs the named `package.json` scripts and fails if a configured script fails. It expects a compatible lockfile: `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock`.
+Set `lint-script` to an empty string if the project has no lint script. Set any other script input to an empty string only when that stage is intentionally not applicable. The reusable workflow runs the named `package.json` scripts and fails if a configured script fails. It expects a compatible lockfile: `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock`. For pnpm, declare the authoritative version in `package.json` using its `packageManager` field; the setup action reads that field rather than receiving a second, potentially conflicting version.
 
 ## 2. Continuous delivery (CD) to GHCR
 
@@ -86,7 +85,6 @@ jobs:
     with:
       node-version: "22"
       package-manager: pnpm
-      pnpm-version: "10.4.1"
       test-command: pnpm exec playwright test
       artifact-name: playwright-results
 ```
