@@ -1,16 +1,14 @@
-name: Labeler / path-based labels
+name: Labeler
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, reopened, synchronize, ready_for_review]
-  workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  path-labels:
-    name: Apply path-based labels
+  label:
     runs-on: ubuntu-latest
     permissions:
       contents: read
