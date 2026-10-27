@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { trpc } from "@/lib/trpc";
-import { Users, Plus, Mail, Building2, Trash2 } from "lucide-react";
+import { Users, Plus, Mail, Building2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -15,7 +15,6 @@ export default function Clients() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [company, setCompany] = useState("");
-  const [status, setStatus] = useState<"lead" | "prospect" | "active" | "inactive">("lead");
 
   const { data: clients, isLoading, refetch } = trpc.clients.list.useQuery();
   const createClient = trpc.clients.create.useMutation({
@@ -26,17 +25,9 @@ export default function Clients() {
       setName("");
       setEmail("");
       setCompany("");
-      setStatus("lead");
     },
     onError: (error) => {
       toast.error(`Failed to create client: ${error.message}`);
-    }
-  });
-
-  const deleteClient = trpc.clients.delete.useMutation({
-    onSuccess: () => {
-      toast.success("Client deleted");
-      refetch();
     }
   });
 
@@ -48,8 +39,7 @@ export default function Clients() {
     createClient.mutate({
       name: name.trim(),
       email: email.trim() || undefined,
-      company: company.trim() || undefined,
-      status
+      company: company.trim() || undefined
     });
   };
 
@@ -117,8 +107,8 @@ export default function Clients() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+                  <Label htmlFor="status">Status (managed after creation)</Label>
+                  <Select value="lead" disabled>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -187,17 +177,7 @@ export default function Clients() {
                     >
                       Edit
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        if (confirm(`Delete client "${client.name}"?`)) {
-                          deleteClient.mutate({ id: client.id });
-                        }
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
                   </div>
                 </CardContent>
               </Card>
