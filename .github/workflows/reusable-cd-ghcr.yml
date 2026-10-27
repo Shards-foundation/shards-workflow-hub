@@ -1,0 +1,110 @@
+name: Reusable CD - Publish container to GHCR
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: Lowercase image name under the calling repository owner
+        type: string
+        required: true
+      context:
+        description: Docker build context
+        type: string
+        required: false
+        default: .
+      dockerfile:
+        description: Path to Dockerfile
+        type: string
+        required: false
+        default: ./Dockerfile
+      platforms:
+        description: Buildx target platforms
+        type: string
+        required: false
+        default: linux/amd64
+    outputs:
+      image:
+        description: Published GHCR image
+        value: ${{ jobs.publish.outputs.image }}
+      tags:
+        description: Published image tags
+        value: ${{ jobs.publish.outputs.tags }}
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: cd-ghcr-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-release:
+    name: Validate release trigger
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require a version tag
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+        run: |
+          case "$GITHUB_REF" in
+            refs/tags/v*) ;;
+            *) echo "::error::Container publishing is permitted only for version tags such as v1.2.3."; exit 1 ;;
+          esac
+          if ! printf '%s' "$IMAGE_NAME" | grep -Eq '^[a-z0-9]+([._-][a-z0-9]+)*$'; then
+            echo "::error::image-name must be lowercase and contain only letters, numbers, dots, underscores, or hyphens."
+            exit 1
+          fi
+
+  publish:
+    name: Build and publish image
+    needs: validate-release
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image-name.outputs.image }}
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout release source
+        uses: actions/checkout@v7
+
+      - name: Normalise image name
+        id: image-name
+        env:
+          OWNER: ${{ github.repository_owner }}
+          IMAGE_NAME: ${{ inputs.image-name }}
+        run: |
+          IMAGE="ghcr.io/${OWNER}/${IMAGE_NAME}"
+          IMAGE="$(printf '%s' "$IMAGE" | tr '[:upper:]' '[:lower:]')"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate image tags and labels
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.image-name.outputs.image }}
+          tags: |
+            type=ref,event=tag
+            type=sha,prefix=sha-
+
+      - name: Authenticate to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ inputs.context }}
+          file: ${{ inputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
