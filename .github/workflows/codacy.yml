@@ -47,6 +47,7 @@ jobs:
       - name: Assign unique SARIF categories
         shell: bash
         run: |
+          chmod u+w results.sarif
           node <<'NODE'
           const fs = require('node:fs');
           const report = JSON.parse(fs.readFileSync('results.sarif', 'utf8'));
