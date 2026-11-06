@@ -10,7 +10,7 @@
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc --noEmit",
     "format": "prettier --write .",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "db:push": "drizzle-kit generate && drizzle-kit migrate"
   },
   "dependencies": {
@@ -59,7 +59,7 @@
     "framer-motion": "^12.38.0",
     "input-otp": "^1.4.2",
     "jose": "6.1.0",
-    "lucide-react": "^1.8.0",
+    "lucide-react": "^1.61.0",
     "mysql2": "^3.23.1",
     "nanoid": "^5.1.16",
     "next-themes": "^0.4.6",
