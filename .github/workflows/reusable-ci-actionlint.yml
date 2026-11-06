@@ -1,12 +1,6 @@
 name: Reusable CI - GitHub Actions Lint
 on:
   workflow_call:
-    inputs:
-      fail-level:
-        description: Minimum reviewdog finding severity that fails
-        type: string
-        required: false
-        default: error
 permissions:
   contents: read
 concurrency:
@@ -18,12 +12,12 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
-      checks: write
     steps:
       - name: Checkout source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Lint workflow syntax and expressions
-        uses: reviewdog/action-actionlint@619a81ec64ff8c0211cd6146eb2b21e8f1d7f440 # v1
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          reporter: github-check
-          fail_level: ${{ inputs.fail-level }}
+          go-version: "1.25.0"
+      - name: Run actionlint
+        run: go run github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
