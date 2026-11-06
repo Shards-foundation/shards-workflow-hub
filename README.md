@@ -1,4 +1,4 @@
-# Shards Labs Workflow Hub
+# Shards Foundation Workflow Hub
 
 > **Autonomous Business Operations Platform** - Orchestrate workflows across 49 MCP connectors, 13 AI models, and Stripe payments
 
