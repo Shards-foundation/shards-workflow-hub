@@ -54,9 +54,11 @@ jobs:
       - name: Run tests
         env:
           TEST_ARGS: ${{ inputs.test-args }}
-        run: go test $TEST_ARGS
+        run: |
+          read -r -a test_args <<< "$TEST_ARGS"
+          go test "${test_args[@]}"
       - name: Run golangci-lint
         if: inputs.run-lint
-        uses: golangci/golangci-lint-action@v8
+        uses: golangci/golangci-lint-action@v9
         with:
           working-directory: ${{ inputs.working-directory }}
