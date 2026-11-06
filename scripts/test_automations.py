@@ -128,13 +128,10 @@ class AutomationScriptTests(unittest.TestCase):
             root = pathlib.Path(directory)
             token = "ghp_" + ("a" * 36)
             (root / "settings.env").write_text(f"GITHUB_TOKEN={token}\n", encoding="utf-8")
-            result = subprocess.run(
-                [sys.executable, str(AUTOMATIONS / "secret_scan.py"), str(root)],
-                cwd=ROOT, capture_output=True, text=True, timeout=10,
-            )
-            self.assertEqual(result.returncode, 1)
-            self.assertIn("pattern matched", (result.stdout + result.stderr).lower())
-            self.assertNotIn(token, result.stdout + result.stderr)
+            return_code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(root))
+            self.assertEqual(return_code, 1)
+            self.assertIn("pattern matched", (stdout + stderr).lower())
+            self.assertNotIn(token, stdout + stderr)
 
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
@@ -182,7 +179,7 @@ class AutomationScriptTests(unittest.TestCase):
                 self.end_headers()
                 self.wfile.write(b'{"status":"ok"}')
 
-            def log_message(self, format, *args):
+            def log_message(self, format, *args):  # pylint: disable=redefined-builtin
                 return
 
         server = HTTPServer(("127.0.0.1", 0), HealthHandler)
@@ -217,7 +214,7 @@ class AutomationScriptTests(unittest.TestCase):
                 self.send_response(403)
                 self.end_headers()
 
-            def log_message(self, format, *args):
+            def log_message(self, format, *args):  # pylint: disable=redefined-builtin
                 return
 
         server = HTTPServer(("127.0.0.1", 0), ForbiddenHandler)
