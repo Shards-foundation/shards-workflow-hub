@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout source
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Build image locally
         env:
           DOCKERFILE: ${{ inputs.dockerfile }}
@@ -35,7 +35,7 @@ jobs:
           IMAGE_TAG: workflow-hub-scan:${{ github.sha }}
         run: docker build --file "$DOCKERFILE" --tag "$IMAGE_TAG" "$BUILD_CONTEXT"
       - name: Scan image for vulnerabilities
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: workflow-hub-scan:${{ github.sha }}
           format: table

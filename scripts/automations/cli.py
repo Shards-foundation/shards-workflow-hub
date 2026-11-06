@@ -382,7 +382,17 @@ def cmd_find_old_files(args: argparse.Namespace) -> int:
 
 def cmd_count_lines(args: argparse.Namespace) -> int:
     path = args.path.expanduser().resolve()
-    files = [path] if path.is_file() else sorted(path.glob(args.glob)) if path.is_dir() else []
+    files = (
+        [path]
+        if path.is_file()
+        else sorted(
+            candidate
+            for candidate in path.rglob(args.glob)
+            if candidate.is_file() and not candidate.is_symlink() and candidate.resolve().is_relative_to(path)
+        )
+        if path.is_dir()
+        else []
+    )
     if not files:
         raise FileNotFoundError(f"No files found at {path}")
     total = 0

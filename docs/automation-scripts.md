@@ -37,7 +37,7 @@ python3 scripts/automations/git_report.py .
 | `check_url.py` | HTTP(S) health check with timeout |
 | `checksum_tree.py` | SHA-256 manifest for a directory |
 | `compare_directories.py` | Compare directory trees by path and content hash |
-| `count_lines.py` | Count text lines in a file or directory |
+| `count_lines.py` | Count text lines in a file or recursively matched files in a directory |
 | `csv_deduplicate.py` | Write a deduplicated CSV copy |
 | `csv_profile.py` | Summarize rows, missing values, and unique values |
 | `csv_to_json.py` | Convert CSV records into a JSON array |
@@ -58,7 +58,7 @@ python3 scripts/automations/git_report.py .
 
 ## Safety and exit behavior
 
-All commands provide `--help`, structured logging, and a non-zero exit status on input, validation, or network failures. HTTP, TCP, and TLS checks use bounded timeouts; DNS resolution delegates to the operating system resolver. File-writing commands create a separate output and refuse to overwrite an existing file unless `--force` is explicitly supplied; input and output paths cannot be the same. The utilities do not delete files or modify Git state. The directory backup excludes common generated/dependency directories (`.git`, `node_modules`, `.venv`, `venv`, and `__pycache__`) by default.
+All commands provide `--help`, structured logging, and a non-zero exit status on input, validation, or network failures. HTTP, TCP, and TLS checks use bounded timeouts. HTTP check logs redact URL paths, credentials, and query parameters. DNS resolution delegates to the operating system resolver. File-writing commands create a separate output and refuse to overwrite an existing file unless `--force` is explicitly supplied; input and output paths cannot be the same. The utilities do not delete files or modify Git state. The directory backup excludes common generated/dependency directories (`.git`, `node_modules`, `.venv`, `venv`, and `__pycache__`) by default.
 
 Smoke tests for the command catalog are run with:
 

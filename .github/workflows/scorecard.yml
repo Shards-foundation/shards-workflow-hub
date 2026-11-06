@@ -23,4 +23,4 @@ jobs:
       contents: read
       id-token: write
       security-events: write
-    uses: Shards-foundation/.github/.github/workflows/scorecard.yml@main
+    uses: Shards-foundation/.github/.github/workflows/scorecard.yml@ed2058b1f36bfefa1ce847ff253c777f3df8cd5b # main

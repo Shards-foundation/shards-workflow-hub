@@ -162,5 +162,6 @@ The consuming repository must install Playwright and provide a working test suit
 - CD fails unless the caller ref is a version tag beginning with `v`. Protect release tags and restrict who can create them.
 - No deployment credentials are required for CI or CT. GHCR publishing uses the calling workflow's `GITHUB_TOKEN`; do not add a PAT unless an explicit cross-repository publishing requirement justifies it.
 - Pin this workflow hub to a reviewed commit SHA in production callers. The examples use `@master` for readability; a tag or SHA is more reproducible.
-- The workflows use version-tag references for third-party actions. Keep them updated with Dependabot and consider full commit-SHA pinning under your organisation's action policy.
+- Every third-party action used by the reusable workflow library is pinned to a full commit SHA, with the human-readable version retained in a trailing comment. Review both the action release and resolved commit when updating pins.
+- The Trivy workflows use `aquasecurity/trivy-action` v0.36.0 pinned by SHA. The advisory identifies v0.35.0 as the fixed release; keep this action at v0.35.0 or later and review the [Trivy supply-chain advisory](https://github.com/advisories/GHSA-69fq-xp46-6x23) before changing its pin.
 - These workflows are opt-in. Adding them to the hub does not change CI/CD/CT in other repositories until those repositories add caller workflows.

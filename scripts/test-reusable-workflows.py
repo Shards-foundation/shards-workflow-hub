@@ -30,6 +30,16 @@ class ReusableWorkflowCatalogTests(unittest.TestCase):
                 self.assertNotRegex(content, r"(?m)^\s*uses:\s+[^\s@]+@main\s*$")
                 self.assertNotIn("TODO", content)
 
+    def test_external_actions_are_pinned_to_full_commit_shas(self) -> None:
+        for workflow in sorted(WORKFLOWS.glob("reusable-*.yml")):
+            for line_number, line in enumerate(workflow.read_text(encoding="utf-8").splitlines(), 1):
+                match = re.match(r"^\s*uses:\s*(\S+)", line)
+                if not match or match.group(1).startswith("./"):
+                    continue
+                with self.subTest(workflow=workflow.name, line=line_number):
+                    self.assertRegex(match.group(1), r"@[0-9a-f]{40}$")
+                    self.assertRegex(line, r"\s+#\s+\S+\s*$")
+
     def test_workflow_files_have_unique_names(self) -> None:
         names: list[str] = []
         for workflow in sorted(WORKFLOWS.glob("reusable-*.yml")):

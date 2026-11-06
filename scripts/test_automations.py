@@ -153,7 +153,7 @@ class AutomationScriptTests(unittest.TestCase):
                 self.end_headers()
                 self.wfile.write(b'{"status":"ok"}')
 
-            def log_message(self, format: str, *args: object) -> None:
+            def log_message(self, log_format: str, *args: object) -> None:
                 return
 
         server = HTTPServer(("127.0.0.1", 0), HealthHandler)
@@ -181,6 +181,46 @@ class AutomationScriptTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 1)
         self.assertNotIn(token, result.stdout + result.stderr)
+
+    def test_http_retry_permanent_error_does_not_disclose_query_parameters(self) -> None:
+        class ForbiddenHandler(BaseHTTPRequestHandler):
+            def do_GET(self) -> None:
+                self.send_response(403)
+                self.end_headers()
+
+            def log_message(self, log_format: str, *args: object) -> None:
+                return
+
+        server = HTTPServer(("127.0.0.1", 0), ForbiddenHandler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        token = "http-retry-marker-do-not-log"
+        url = f"http://127.0.0.1:{server.server_port}/health?token={token}"
+        try:
+            result = subprocess.run(
+                [sys.executable, str(AUTOMATIONS / "http_retry_check.py"), url, "--attempts", "1"],
+                cwd=ROOT, capture_output=True, text=True, timeout=10,
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=2)
+        self.assertEqual(result.returncode, 1)
+        self.assertNotIn(token, result.stdout + result.stderr)
+
+    def test_count_lines_glob_includes_nested_files(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-count-lines-test-") as directory:
+            root = pathlib.Path(directory)
+            (root / "top.txt").write_text("one\n", encoding="utf-8")
+            nested = root / "nested"
+            nested.mkdir()
+            (nested / "inner.txt").write_text("two\nthree\n", encoding="utf-8")
+            result = subprocess.run(
+                [sys.executable, str(AUTOMATIONS / "count_lines.py"), str(root), "--glob", "*.txt"],
+                cwd=ROOT, capture_output=True, text=True, timeout=10,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("files=2 lines=3", result.stdout + result.stderr)
 
     def test_json_duplicate_key_check_rejects_ambiguous_objects(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-json-duplicate-test-") as directory:

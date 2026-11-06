@@ -393,7 +393,7 @@ def cmd_http_retry_check(args: argparse.Namespace) -> int:
             status = error.code
             error_text = f"HTTP {status}"
             if 400 <= status < 500 and status != 429:
-                LOGGER.error("Endpoint returned permanent client error: url=%s status=%d", args.url, status)
+                LOGGER.error("Endpoint returned permanent client error: url=%s status=%d", safe_url(args.url), status)
                 return 1
         except (urllib.error.URLError, TimeoutError, OSError) as error:
             error_text = str(error)
@@ -1009,13 +1009,15 @@ def cmd_requirements_pin_check(args: argparse.Namespace) -> int:
 
 
 def cmd_shell_syntax_check(args: argparse.Namespace) -> int:
+    if args.shell not in {"bash", "sh"}:
+        raise ValueError("Shell must be exactly bash or sh")
     path = args.path.expanduser().resolve()
     files = _walk(path, ".sh")
     if not files:
         raise ValueError(f"No shell scripts found under {path}")
     failures = 0
     for source in files:
-        result = subprocess.run([args.shell, "-n", str(source)], capture_output=True, text=True, timeout=20)
+        result = subprocess.run([args.shell, "-n", str(source)], capture_output=True, text=True, timeout=20, check=False)
         if result.returncode:
             LOGGER.error("Shell syntax error: file=%s detail=%s", source, result.stderr.strip())
             failures += 1
