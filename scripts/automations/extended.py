@@ -276,7 +276,7 @@ def cmd_secret_scan(args: argparse.Namespace) -> int:
         for line_number, line in enumerate(data.decode("utf-8", errors="replace").splitlines(), start=1):
             for rule, pattern in SECRET_RULES:
                 if pattern.search(line):
-                    LOGGER.warning("Potential secret: rule=%s file=%s line=%d (value suppressed)", rule, relative, line_number)
+                    LOGGER.warning("Pattern matched: rule=%s file=%s line=%d (line content suppressed)", rule, relative, line_number)
                     matches += 1
                     break
     LOGGER.info("Secret scan summary: files_scanned=%d skipped=%d findings=%d", files_scanned, skipped, matches)

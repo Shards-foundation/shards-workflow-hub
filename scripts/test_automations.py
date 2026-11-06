@@ -105,14 +105,14 @@ class AutomationScriptTests(unittest.TestCase):
     def test_secret_scan_reports_a_match_without_printing_secret_value(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-secret-test-") as directory:
             root = pathlib.Path(directory)
-            token = "ghp_testtokenneverprint00000000000000000000"
+            token = "ghp_" + ("a" * 36)
             (root / "settings.env").write_text(f"GITHUB_TOKEN={token}\n", encoding="utf-8")
             result = subprocess.run(
                 [sys.executable, str(AUTOMATIONS / "secret_scan.py"), str(root)],
                 cwd=ROOT, capture_output=True, text=True, timeout=10,
             )
             self.assertEqual(result.returncode, 1)
-            self.assertIn("potential secret", (result.stdout + result.stderr).lower())
+            self.assertIn("pattern matched", (result.stdout + result.stderr).lower())
             self.assertNotIn(token, result.stdout + result.stderr)
 
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
@@ -159,7 +159,7 @@ class AutomationScriptTests(unittest.TestCase):
         server = HTTPServer(("127.0.0.1", 0), HealthHandler)
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
-        token = "test-query-secret-should-not-be-logged"
+        token = "test-query-marker-should-not-be-logged"
         url = f"http://127.0.0.1:{server.server_port}/health?token={token}"
         try:
             result = subprocess.run(
@@ -174,7 +174,7 @@ class AutomationScriptTests(unittest.TestCase):
         self.assertNotIn(token, result.stdout + result.stderr)
 
     def test_failed_url_check_does_not_disclose_query_parameters(self) -> None:
-        token = "failure-query-secret-do-not-log"
+        token = "failure-query-marker-do-not-log"
         result = subprocess.run(
             [sys.executable, str(AUTOMATIONS / "check_url.py"), f"http://127.0.0.1:1/health?token={token}", "--timeout", "1"],
             cwd=ROOT, capture_output=True, text=True, timeout=10,

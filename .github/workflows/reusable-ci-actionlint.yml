@@ -9,7 +9,6 @@ on:
         default: error
 permissions:
   contents: read
-  checks: write
 concurrency:
   group: actionlint-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -17,6 +16,9 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
+      checks: write
     steps:
       - name: Checkout source
         uses: actions/checkout@v7
