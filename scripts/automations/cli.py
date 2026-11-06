@@ -16,7 +16,7 @@ import logging
 import re
 import shutil
 import socket
-import subprocess
+import subprocess  # nosec B404: subprocess calls use fixed argv and never invoke a shell.
 import sys
 import urllib.error
 import urllib.request
@@ -25,7 +25,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable
 
-from scripts.automations.extended import EXTENDED_HANDLERS, add_extended_parsers, safe_url
+from scripts.automations.extended import EXTENDED_HANDLERS, add_extended_parsers, require_http_url, safe_url
 
 LOGGER = logging.getLogger("shards.automation")
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
@@ -499,7 +499,7 @@ def cmd_redact_log(args: argparse.Namespace) -> int:
 
 
 def _git(directory: Path, *args: str) -> str:
-    result = subprocess.run(["git", "-C", str(directory), *args], check=True, capture_output=True, text=True, timeout=15)
+    result = subprocess.run(["git", "-C", str(directory), *args], check=True, capture_output=True, text=True, timeout=15)  # nosec B603
     return result.stdout.strip()
 
 
@@ -522,18 +522,17 @@ def cmd_git_report(args: argparse.Namespace) -> int:
 def cmd_check_url(args: argparse.Namespace) -> int:
     if args.timeout <= 0:
         raise ValueError("--timeout must be positive")
-    if not args.url.startswith(("http://", "https://")):
-        raise ValueError("URL must begin with http:// or https://")
-    request = urllib.request.Request(args.url, headers={"User-Agent": "shards-workflow-hub-healthcheck/1.0"}, method="GET")
+    url = require_http_url(args.url)
+    request = urllib.request.Request(url, headers={"User-Agent": "shards-workflow-hub-healthcheck/1.0"}, method="GET")
     try:
-        with urllib.request.urlopen(request, timeout=args.timeout) as response:
-            LOGGER.info("URL reachable: status=%d url=%s", response.status, safe_url(args.url))
+        with urllib.request.urlopen(request, timeout=args.timeout) as response:  # nosec B310
+            LOGGER.info("URL reachable: status=%d url=%s", response.status, safe_url(url))
             return 0 if 200 <= response.status < 400 else 1
     except urllib.error.HTTPError as error:
-        LOGGER.error("URL returned HTTP status %d: %s", error.code, safe_url(args.url))
+        LOGGER.error("URL returned HTTP status %d: %s", error.code, safe_url(url))
         return 1
     except urllib.error.URLError as error:
-        LOGGER.error("URL request failed: url=%s reason=%s", safe_url(args.url), error.reason)
+        LOGGER.error("URL request failed: url=%s reason=%s", safe_url(url), error.reason)
         return 1
 
 

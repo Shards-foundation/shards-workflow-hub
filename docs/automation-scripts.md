@@ -89,6 +89,8 @@ python3 scripts/automations/disk_threshold_check.py / --minimum-free-percent 12 
 python3 scripts/automations/sqlite_integrity.py ./local.db
 ```
 
+HTTP checks require an absolute HTTP(S) URL with a hostname and a valid optional port. Their logs omit URL credentials, paths, and query strings; request failures report exception types rather than raw URL-bearing messages.
+
 The additional commands are:
 
 | Script | Purpose |

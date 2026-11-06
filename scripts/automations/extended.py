@@ -18,7 +18,7 @@ import shutil
 import sqlite3
 import ssl
 import stat
-import subprocess
+import subprocess  # nosec B404: process calls below use fixed argv and never invoke a shell.
 import time
 import urllib.error
 import urllib.request
@@ -239,6 +239,19 @@ def safe_url(url: str) -> str:
     return urlunsplit((parts.scheme, authority, "/", "", ""))
 
 
+def require_http_url(url: str) -> str:
+    """Require an absolute HTTP(S) URL with a hostname and valid optional port."""
+    try:
+        parts = urlsplit(url)
+        hostname = parts.hostname
+        parts.port
+    except ValueError as error:
+        raise ValueError("URL must be a valid http(s) URL with a host") from error
+    if parts.scheme.lower() not in {"http", "https"} or not hostname:
+        raise ValueError("URL must be a valid http(s) URL with a host")
+    return url
+
+
 def _new_output(path: Path, force: bool) -> Path:
     result = path.expanduser().resolve()
     if result.exists() and not force:
@@ -375,49 +388,49 @@ def cmd_tls_certificate_check(args: argparse.Namespace) -> int:
 
 
 def cmd_http_retry_check(args: argparse.Namespace) -> int:
-    if not args.url.startswith(("http://", "https://")):
-        raise ValueError("URL must begin with http:// or https://")
+    url = require_http_url(args.url)
     if args.attempts < 1 or args.timeout <= 0 or args.base_delay < 0 or args.max_delay < 0:
         raise ValueError("attempts must be >=1; timeout positive; retry delays non-negative")
     delay = args.base_delay
     for attempt in range(1, args.attempts + 1):
         try:
-            request = urllib.request.Request(args.url, headers={"User-Agent": "shards-observability-check/1.0"})
-            with urllib.request.urlopen(request, timeout=args.timeout) as response:
+            request = urllib.request.Request(url, headers={"User-Agent": "shards-observability-check/1.0"})
+            with urllib.request.urlopen(request, timeout=args.timeout) as response:  # nosec B310
                 status = response.status
             if 200 <= status < 400:
-                LOGGER.info("Endpoint healthy: url=%s status=%d attempt=%d", safe_url(args.url), status, attempt)
+                LOGGER.info("Endpoint healthy: url=%s status=%d attempt=%d", safe_url(url), status, attempt)
                 return 0
             error_text = f"HTTP {status}"
         except urllib.error.HTTPError as error:
             status = error.code
             error_text = f"HTTP {status}"
             if 400 <= status < 500 and status != 429:
-                LOGGER.error("Endpoint returned permanent client error: url=%s status=%d", safe_url(args.url), status)
+                LOGGER.error("Endpoint returned permanent client error: url=%s status=%d", safe_url(url), status)
                 return 1
         except (urllib.error.URLError, TimeoutError, OSError) as error:
-            error_text = str(error)
+            error_text = type(error).__name__
         LOGGER.warning("Endpoint check failed: attempt=%d/%d error=%s", attempt, args.attempts, error_text)
         if attempt < args.attempts:
             time.sleep(min(delay, args.max_delay))
             delay = min(max(delay * 2, args.base_delay), args.max_delay)
-        LOGGER.error("Endpoint remained unhealthy after %d attempts: url=%s", args.attempts, safe_url(args.url))
+        LOGGER.error("Endpoint remained unhealthy after %d attempts: url=%s", args.attempts, safe_url(url))
     return 1
 
 
 def cmd_http_security_headers(args: argparse.Namespace) -> int:
-    if not args.url.startswith(("http://", "https://")) or args.timeout <= 0:
-        raise ValueError("provide an http(s) URL and a positive timeout")
+    url = require_http_url(args.url)
+    if args.timeout <= 0:
+        raise ValueError("timeout must be positive")
     expected = ("strict-transport-security", "content-security-policy", "x-content-type-options", "referrer-policy")
-    request = urllib.request.Request(args.url, headers={"User-Agent": "shards-header-audit/1.0"}, method="GET")
+    request = urllib.request.Request(url, headers={"User-Agent": "shards-header-audit/1.0"}, method="GET")
     try:
-        response = urllib.request.urlopen(request, timeout=args.timeout)
+        response = urllib.request.urlopen(request, timeout=args.timeout)  # nosec B310
     except urllib.error.HTTPError as error:
         response = error
     with response:
         present = {name.lower() for name in response.headers.keys()}
         missing = [name for name in expected if name not in present]
-        LOGGER.info("HTTP security headers: url=%s status=%d present=%d missing=%d", safe_url(args.url), response.status, len(expected) - len(missing), len(missing))
+        LOGGER.info("HTTP security headers: url=%s status=%d present=%d missing=%d", safe_url(url), response.status, len(expected) - len(missing), len(missing))
         for name in missing:
             LOGGER.warning("Missing recommended response header: %s", name)
     return 1 if args.require_all and missing else 0
@@ -653,15 +666,16 @@ def cmd_file_inventory(args: argparse.Namespace) -> int:
 
 
 def cmd_service_json_health(args: argparse.Namespace) -> int:
-    if not args.url.startswith(("http://", "https://")) or args.timeout <= 0:
-        raise ValueError("provide an http(s) URL and a positive timeout")
-    request = urllib.request.Request(args.url, headers={"Accept": "application/json", "User-Agent": "shards-json-health/1.0"})
+    url = require_http_url(args.url)
+    if args.timeout <= 0:
+        raise ValueError("timeout must be positive")
+    request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "shards-json-health/1.0"})
     try:
-        with urllib.request.urlopen(request, timeout=args.timeout) as response:
+        with urllib.request.urlopen(request, timeout=args.timeout) as response:  # nosec B310
             status_code = response.status
             payload = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, OSError) as error:
-        LOGGER.error("Health endpoint request failed: %s", error)
+        LOGGER.error("Health endpoint request failed: url=%s error=%s", safe_url(url), type(error).__name__)
         return 1
     except (UnicodeError, json.JSONDecodeError) as error:
         LOGGER.error("Health endpoint returned invalid JSON: %s", error)
@@ -671,7 +685,7 @@ def cmd_service_json_health(args: argparse.Namespace) -> int:
         return 1
     actual = payload.get(args.field)
     healthy = status_code < 400 and actual == args.equals
-    LOGGER.info("JSON health endpoint: url=%s http_status=%d field=%s matches_expected=%s", safe_url(args.url), status_code, args.field, healthy)
+    LOGGER.info("JSON health endpoint: url=%s http_status=%d field=%s matches_expected=%s", safe_url(url), status_code, args.field, healthy)
     if not healthy:
         LOGGER.error("Health condition did not match expected value")
     return 0 if healthy else 1
@@ -692,10 +706,10 @@ def cmd_check_dns(args: argparse.Namespace) -> int:
 
 def cmd_git_hygiene(args: argparse.Namespace) -> int:
     root = _resolve_directory(args.directory)
-    status = subprocess.run(["git", "-C", str(root), "status", "--short", "--untracked-files=all"], capture_output=True, text=True, timeout=20)
+    status = subprocess.run(["git", "-C", str(root), "status", "--short", "--untracked-files=all"], capture_output=True, text=True, timeout=20)  # nosec B603
     if status.returncode != 0:
         raise ValueError(status.stderr.strip() or f"Not a Git repository: {root}")
-    whitespace = subprocess.run(["git", "-C", str(root), "diff", "--check"], capture_output=True, text=True, timeout=20)
+    whitespace = subprocess.run(["git", "-C", str(root), "diff", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
     if whitespace.returncode != 0:
         LOGGER.error("Git whitespace check failed")
         for line in whitespace.stdout.splitlines()[:50]:
@@ -850,7 +864,7 @@ def cmd_git_conflict_check(args: argparse.Namespace) -> int:
 
 def cmd_git_submodule_check(args: argparse.Namespace) -> int:
     root = _resolve_directory(args.directory)
-    result = subprocess.run(["git", "-C", str(root), "submodule", "status", "--recursive"], capture_output=True, text=True, timeout=30)
+    result = subprocess.run(["git", "-C", str(root), "submodule", "status", "--recursive"], capture_output=True, text=True, timeout=30)  # nosec B603
     if result.returncode != 0:
         raise ValueError(result.stderr.strip() or "git submodule status failed")
     findings = 0
@@ -869,7 +883,7 @@ def cmd_git_submodule_check(args: argparse.Namespace) -> int:
 
 def cmd_git_tracked_secrets_check(args: argparse.Namespace) -> int:
     root = _resolve_directory(args.directory)
-    result = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, timeout=20)
+    result = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, timeout=20)  # nosec B603
     if result.returncode != 0:
         raise ValueError("Unable to list tracked files; directory must be in a Git repository")
     patterns = (".env", ".env.*", "*.pem", "*.p12", "*.pfx", "*.key", "id_rsa*", "id_ed25519*", "secrets.*", "service-account*.json")
@@ -1017,7 +1031,10 @@ def cmd_shell_syntax_check(args: argparse.Namespace) -> int:
         raise ValueError(f"No shell scripts found under {path}")
     failures = 0
     for source in files:
-        result = subprocess.run([args.shell, "-n", str(source)], capture_output=True, text=True, timeout=20, check=False)
+        if args.shell == "bash":
+            result = subprocess.run(["bash", "-n", str(source)], capture_output=True, text=True, timeout=20, check=False)  # nosec B603
+        else:
+            result = subprocess.run(["sh", "-n", str(source)], capture_output=True, text=True, timeout=20, check=False)  # nosec B603
         if result.returncode:
             LOGGER.error("Shell syntax error: file=%s detail=%s", source, result.stderr.strip())
             failures += 1
@@ -1055,7 +1072,7 @@ def cmd_stale_worktree_report(args: argparse.Namespace) -> int:
     if args.minimum_age_days < 0:
         raise ValueError("--minimum-age-days must be non-negative")
     root = _resolve_directory(args.directory)
-    result = subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, timeout=20)
+    result = subprocess.run(["git", "-C", str(root), "worktree", "list", "--porcelain"], capture_output=True, text=True, timeout=20)  # nosec B603
     if result.returncode != 0:
         raise ValueError(result.stderr.strip() or "git worktree list failed")
     now = time.time()

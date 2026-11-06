@@ -3,12 +3,16 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import pathlib
-import subprocess
+import runpy
+import subprocess  # nosec B404: tests invoke local wrappers with fixed args and shell disabled.
 import sys
 import tempfile
 import threading
 import unittest
+import uuid
 import zipfile
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
@@ -78,6 +82,30 @@ EXPECTED_SCRIPTS = {
 }
 
 
+def _run_script(script: pathlib.Path, *arguments: str) -> tuple[int, str, str]:
+    """Run a standalone wrapper in-process and capture its exit code and output."""
+    original_argv, original_path = sys.argv[:], sys.path[:]
+    stdout, stderr = io.StringIO(), io.StringIO()
+    sys.argv = [str(script), *arguments]
+    try:
+        with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+            try:
+                runpy.run_path(str(script), run_name="__main__")
+            except SystemExit as error:
+                if error.code is None:
+                    return_code = 0
+                elif isinstance(error.code, int):
+                    return_code = error.code
+                else:
+                    return_code = 1
+            else:
+                return_code = 0
+    finally:
+        sys.argv = original_argv
+        sys.path[:] = original_path
+    return return_code, stdout.getvalue(), stderr.getvalue()
+
+
 class AutomationScriptTests(unittest.TestCase):
     """Check command discovery, behavior, and security-sensitive output."""
 
@@ -91,16 +119,9 @@ class AutomationScriptTests(unittest.TestCase):
             if script.name in {"__init__.py", "cli.py", "extended.py"}:
                 continue
             with self.subTest(script=script.name):
-                result = subprocess.run(
-                    [sys.executable, str(script), "--help"],
-                    cwd=ROOT,
-                    check=False,
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                self.assertEqual(result.returncode, 0, result.stderr)
-                self.assertIn("usage:", result.stdout.lower())
+                return_code, stdout, stderr = _run_script(script, "--help")
+                self.assertEqual(return_code, 0, stderr)
+                self.assertIn("usage:", stdout.lower())
 
     def test_secret_scan_reports_a_match_without_printing_secret_value(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-secret-test-") as directory:
@@ -125,6 +146,14 @@ class AutomationScriptTests(unittest.TestCase):
             )
             self.assertEqual(result.returncode, 1)
             self.assertIn("mutable", (result.stdout + result.stderr).lower())
+
+    def test_http_checks_reject_urls_without_a_host(self) -> None:
+        for script in ("check_url.py", "http_retry_check.py", "http_security_headers.py"):
+            with self.subTest(script=script):
+                return_code, stdout, stderr = _run_script(AUTOMATIONS / script, "http:///etc/passwd")
+                self.assertNotEqual(return_code, 0)
+                self.assertIn("valid http(s) url with a host", (stdout + stderr).lower())
+                self.assertNotIn("Traceback", stderr)
 
     def test_secret_scan_does_not_follow_symlinks_outside_scan_root(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-symlink-test-") as directory:
@@ -153,13 +182,13 @@ class AutomationScriptTests(unittest.TestCase):
                 self.end_headers()
                 self.wfile.write(b'{"status":"ok"}')
 
-            def log_message(self, log_format: str, *args: object) -> None:
+            def log_message(self, format, *args):
                 return
 
         server = HTTPServer(("127.0.0.1", 0), HealthHandler)
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
-        token = "test-query-marker-should-not-be-logged"
+        token = uuid.uuid4().hex
         url = f"http://127.0.0.1:{server.server_port}/health?token={token}"
         try:
             result = subprocess.run(
@@ -174,7 +203,7 @@ class AutomationScriptTests(unittest.TestCase):
         self.assertNotIn(token, result.stdout + result.stderr)
 
     def test_failed_url_check_does_not_disclose_query_parameters(self) -> None:
-        token = "failure-query-marker-do-not-log"
+        token = uuid.uuid4().hex
         result = subprocess.run(
             [sys.executable, str(AUTOMATIONS / "check_url.py"), f"http://127.0.0.1:1/health?token={token}", "--timeout", "1"],
             cwd=ROOT, capture_output=True, text=True, timeout=10,
@@ -188,13 +217,13 @@ class AutomationScriptTests(unittest.TestCase):
                 self.send_response(403)
                 self.end_headers()
 
-            def log_message(self, log_format: str, *args: object) -> None:
+            def log_message(self, format, *args):
                 return
 
         server = HTTPServer(("127.0.0.1", 0), ForbiddenHandler)
         worker = threading.Thread(target=server.serve_forever, daemon=True)
         worker.start()
-        token = "http-retry-marker-do-not-log"
+        token = uuid.uuid4().hex
         url = f"http://127.0.0.1:{server.server_port}/health?token={token}"
         try:
             result = subprocess.run(
