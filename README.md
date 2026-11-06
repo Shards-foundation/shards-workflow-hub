@@ -9,7 +9,7 @@
 
 ## Overview
 
-Shards Labs Workflow Hub is a comprehensive autonomous business operations platform that integrates 49 MCP (Model Context Protocol) connectors, 13 AI models, and Stripe payment processing into a unified workflow orchestration system. Built for Shards Labs, this platform enables seamless automation of client acquisition, project management, content generation, and business intelligence workflows.
+Shards Foundation Workflow Hub is a comprehensive autonomous business operations platform that integrates 49 MCP (Model Context Protocol) connectors, 13 AI models, and Stripe payment processing into a unified workflow orchestration system. Built for Shards Labs, this platform enables seamless automation of client acquisition, project management, content generation, and business intelligence workflows.
 
 ## Features
 
@@ -236,4 +236,4 @@ For support, email support@shardslabs.com or open an issue on GitHub.
 
 ---
 
-**Made with ❤️ by Shards Labs**
+**Made with ❤️ by Shards Foundation**
