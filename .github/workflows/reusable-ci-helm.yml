@@ -1,0 +1,37 @@
+name: Reusable CI - Helm
+on:
+  workflow_call:
+    inputs:
+      chart-directory:
+        description: Path to the Helm chart
+        type: string
+        required: false
+        default: ./chart
+      helm-version:
+        description: Helm version
+        type: string
+        required: false
+        default: v3.16.4
+permissions:
+  contents: read
+concurrency:
+  group: helm-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ inputs.helm-version }}
+      - name: Lint chart
+        env:
+          CHART_DIRECTORY: ${{ inputs.chart-directory }}
+        run: helm lint "$CHART_DIRECTORY"
+      - name: Render chart templates
+        env:
+          CHART_DIRECTORY: ${{ inputs.chart-directory }}
+        run: helm template workflow-validation "$CHART_DIRECTORY" --debug

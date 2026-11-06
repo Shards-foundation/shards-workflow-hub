@@ -1,0 +1,27 @@
+name: Reusable Security - Gitleaks
+on:
+  workflow_call:
+    secrets:
+      GITLEAKS_LICENSE:
+        description: Optional Gitleaks license key for private organization repositories
+        required: false
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: gitleaks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Scan repository for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}

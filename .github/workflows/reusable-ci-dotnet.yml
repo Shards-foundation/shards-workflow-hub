@@ -1,0 +1,42 @@
+name: Reusable CI - .NET
+on:
+  workflow_call:
+    inputs:
+      dotnet-version:
+        description: .NET SDK version
+        type: string
+        required: false
+        default: "8.0.x"
+      solution:
+        description: Solution or project glob passed to dotnet test
+        type: string
+        required: false
+        default: "**/*.sln"
+      verify-format:
+        description: Verify formatting with dotnet format
+        type: boolean
+        required: false
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: dotnet-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ inputs.dotnet-version }}
+      - name: Restore dependencies
+        run: dotnet restore "${{ inputs.solution }}"
+      - name: Verify formatting
+        if: inputs.verify-format
+        run: dotnet format "${{ inputs.solution }}" --verify-no-changes --no-restore
+      - name: Run tests
+        run: dotnet test "${{ inputs.solution }}" --configuration Release --no-restore --verbosity normal

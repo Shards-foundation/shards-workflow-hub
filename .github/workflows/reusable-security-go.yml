@@ -1,0 +1,35 @@
+name: Reusable Security - Go Vulnerability Scan
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: Go version
+        type: string
+        required: false
+        default: "1.24.x"
+      working-directory:
+        description: Go module directory
+        type: string
+        required: false
+        default: "."
+permissions:
+  contents: read
+concurrency:
+  group: go-security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: Run govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...

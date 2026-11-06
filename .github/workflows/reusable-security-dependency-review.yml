@@ -1,0 +1,24 @@
+name: Reusable Security - Dependency Review
+on:
+  workflow_call:
+    inputs:
+      fail-on-severity:
+        description: Minimum severity that fails review (low, moderate, high, critical)
+        type: string
+        required: false
+        default: high
+permissions:
+  contents: read
+  pull-requests: read
+concurrency:
+  group: dependency-review-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  review:
+    if: github.event_name == 'pull_request' || github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Review changed dependencies
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: ${{ inputs.fail-on-severity }}

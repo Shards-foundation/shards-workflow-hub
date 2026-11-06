@@ -1,0 +1,25 @@
+name: Reusable CI - Documentation Links
+on:
+  workflow_call:
+    inputs:
+      args:
+        description: Additional lychee arguments
+        type: string
+        required: false
+        default: "--verbose --no-progress --accept 200,206,429 './**/*.md' './**/*.html'"
+permissions:
+  contents: read
+concurrency:
+  group: links-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: ${{ inputs.args }}
+          fail: true

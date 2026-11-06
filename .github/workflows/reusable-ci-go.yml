@@ -1,0 +1,62 @@
+name: Reusable CI - Go
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: Go version
+        type: string
+        required: false
+        default: "1.24.x"
+      working-directory:
+        description: Module directory
+        type: string
+        required: false
+        default: "."
+      test-args:
+        description: Arguments passed to go test
+        type: string
+        required: false
+        default: "-race ./..."
+      run-lint:
+        description: Run golangci-lint
+        type: boolean
+        required: false
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: go-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ inputs.go-version }}
+          cache-dependency-path: ${{ inputs.working-directory }}/go.sum
+      - name: Verify formatting
+        run: |
+          unformatted="$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 -r gofmt -l)"
+          if [ -n "$unformatted" ]; then
+            printf 'Go files need formatting:\n%s\n' "$unformatted"
+            exit 1
+          fi
+      - name: Run vet
+        run: go vet ./...
+      - name: Run tests
+        env:
+          TEST_ARGS: ${{ inputs.test-args }}
+        run: go test $TEST_ARGS
+      - name: Run golangci-lint
+        if: inputs.run-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          working-directory: ${{ inputs.working-directory }}

@@ -1,0 +1,27 @@
+name: Reusable CI - GitHub Actions Lint
+on:
+  workflow_call:
+    inputs:
+      fail-level:
+        description: Minimum reviewdog finding severity that fails
+        type: string
+        required: false
+        default: error
+permissions:
+  contents: read
+  checks: write
+concurrency:
+  group: actionlint-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Lint workflow syntax and expressions
+        uses: reviewdog/action-actionlint@v1
+        with:
+          reporter: github-check
+          fail_level: ${{ inputs.fail-level }}

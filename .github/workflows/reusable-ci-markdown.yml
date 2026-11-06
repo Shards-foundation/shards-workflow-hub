@@ -1,0 +1,30 @@
+name: Reusable CI - Markdown
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        description: Optional markdownlint-cli2 config path
+        type: string
+        required: false
+        default: ""
+      globs:
+        description: Quoted file glob passed to markdownlint-cli2
+        type: string
+        required: false
+        default: "**/*.md"
+permissions:
+  contents: read
+concurrency:
+  group: markdown-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Lint Markdown
+        uses: DavidAnson/markdownlint-cli2-action@v20
+        with:
+          config: ${{ inputs.config-file }}
+          globs: ${{ inputs.globs }}

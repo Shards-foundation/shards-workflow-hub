@@ -1,0 +1,50 @@
+name: Reusable Security - Node Dependency Audit
+on:
+  workflow_call:
+    inputs:
+      package-manager:
+        description: npm, pnpm, or yarn
+        type: string
+        required: false
+        default: npm
+      severity:
+        description: Minimum severity level passed to npm audit
+        type: string
+        required: false
+        default: high
+permissions:
+  contents: read
+concurrency:
+  group: node-audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: Enable pnpm when requested
+        if: inputs.package-manager == 'pnpm'
+        uses: pnpm/action-setup@v4
+      - name: Validate package manager
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            npm|pnpm|yarn) ;;
+            *) echo "Unsupported package manager: $PACKAGE_MANAGER"; exit 1 ;;
+          esac
+      - name: Audit dependencies
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+          SEVERITY: ${{ inputs.severity }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            npm) npm audit --audit-level="$SEVERITY" ;;
+            pnpm) pnpm audit --audit-level "$SEVERITY" ;;
+            yarn) corepack enable && yarn audit --level "$SEVERITY" ;;
+          esac

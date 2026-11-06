@@ -1,0 +1,30 @@
+name: Reusable CI - Spell Check
+on:
+  workflow_call:
+    inputs:
+      files:
+        description: Files to check (codespell glob syntax)
+        type: string
+        required: false
+        default: "*.md"
+      ignore-words-file:
+        description: Optional codespell ignore-words file
+        type: string
+        required: false
+        default: ""
+permissions:
+  contents: read
+concurrency:
+  group: spelling-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  spellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v7
+      - name: Check spelling
+        uses: codespell-project/actions-codespell@v2
+        with:
+          files: ${{ inputs.files }}
+          ignore_words_file: ${{ inputs.ignore-words-file }}
