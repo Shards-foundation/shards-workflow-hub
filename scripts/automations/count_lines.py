@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Count text-file lines: python3 count_lines.py [--help]."""
+"""Count text-file lines: python3 scripts/automations/count_lines.py FILE_OR_DIRECTORY."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

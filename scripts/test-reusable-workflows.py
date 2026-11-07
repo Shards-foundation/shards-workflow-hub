@@ -30,6 +30,19 @@ class ReusableWorkflowCatalogTests(unittest.TestCase):
                 self.assertNotRegex(content, r"(?m)^\s*uses:\s+[^\s@]+@main\s*$")
                 self.assertNotIn("TODO", content)
 
+    def test_security_and_ci_workflows_do_not_gain_implicit_write_scopes(self) -> None:
+        """A declared permissions block must not hide privileged job overrides."""
+        workflows = sorted(WORKFLOWS.glob("reusable-*.yml"))
+        disallowed = re.compile(
+            r"(?m)^\s+(?:contents|actions|pull-requests|checks|issues|id-token):\s*write\s*$"
+        )
+        for workflow in workflows:
+            if workflow.name.startswith("reusable-cd-"):
+                continue  # Deployment workflows legitimately need write capabilities.
+            with self.subTest(workflow=workflow.name):
+                content = workflow.read_text(encoding="utf-8")
+                self.assertNotRegex(content, disallowed)
+
     def test_external_actions_are_pinned_to_full_commit_shas(self) -> None:
         workflows = sorted(WORKFLOWS.glob("reusable-*.yml")) + [WORKFLOWS / "ci.yml"]
         for workflow in workflows:

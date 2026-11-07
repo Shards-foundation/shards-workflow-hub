@@ -287,6 +287,25 @@ class AutomationScriptTests(unittest.TestCase):
             self.assertEqual(code, 1, stdout + stderr)
             self.assertEqual(source.read_text(encoding="utf-8"), content)
 
+    def test_checksum_tree_default_output_creates_new_manifest(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-default-checksum-") as directory:
+            root = pathlib.Path(directory)
+            (root / "payload.txt").write_text("payload\n", encoding="utf-8")
+            manifest = root / "SHA256SUMS.txt"
+            old_cwd = pathlib.Path.cwd()
+            try:
+                os.chdir(root)
+                code, stdout, stderr = _run_script(AUTOMATIONS / "checksum_tree.py", str(root))
+            finally:
+                os.chdir(old_cwd)
+            self.assertEqual(code, 0, stdout + stderr)
+            self.assertTrue(manifest.is_file())
+            self.assertIn("payload.txt", manifest.read_text(encoding="utf-8"))
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "checksum_tree.py", str(root), "--output", str(manifest), "--force"
+            )
+            self.assertEqual(code, 1, stdout + stderr)
+
     def test_generated_manifest_handles_leading_star_and_space(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-manifest-") as directory:
             base = pathlib.Path(directory)

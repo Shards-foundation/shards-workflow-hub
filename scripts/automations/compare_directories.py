@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare two directory trees: python3 compare_directories.py [--help]."""
+"""Compare directory trees: python3 scripts/automations/compare_directories.py LEFT RIGHT."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

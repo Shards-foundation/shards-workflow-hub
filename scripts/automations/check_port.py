@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check TCP connectivity to a host and port: python3 check_port.py [--help]."""
+"""Check TCP connectivity: python3 scripts/automations/check_port.py HOST PORT [--timeout SECONDS]."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

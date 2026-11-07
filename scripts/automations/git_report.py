@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report Git branch and working-tree state: python3 git_report.py [--help]."""
+"""Inspect Git state: python3 scripts/automations/git_report.py [DIRECTORY]."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a blank environment template from key names only: python3 env_template.py [--help]."""
+"""Create .env keys only: python3 scripts/automations/env_template.py FILE OUTPUT [--force]."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))

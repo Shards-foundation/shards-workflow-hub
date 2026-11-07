@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Report identical files without deleting them: python3 duplicate_files.py [--help]."""
+"""Report duplicate files: python3 scripts/automations/duplicate_files.py DIRECTORY."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
