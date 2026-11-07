@@ -260,6 +260,8 @@ def _csv_rows(path: Path) -> tuple[list[str], Iterable[dict[str, Optional[str]]]
         if len(headers) != len(set(headers)):
             raise ValueError(f"CSV has duplicate header names: {path}")
         for row in preflight:
+            if not row:
+                continue  # DictReader also ignores empty records.
             if len(row) != len(headers):
                 raise ValueError(
                     f"CSV field count mismatch at line {preflight.line_num}: "
