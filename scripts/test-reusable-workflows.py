@@ -45,6 +45,17 @@ class ReusableWorkflowCatalogTests(unittest.TestCase):
         content = (WORKFLOWS / "reusable-ci-actionlint.yml").read_text(encoding="utf-8")
         self.assertNotRegex(content, r"(?m)^\s+(?:checks|pull-requests):\s*write\s*$")
 
+    def test_codeql_language_input_controls_analysis(self) -> None:
+        content = (WORKFLOWS / "reusable-security-codeql.yml").read_text(encoding="utf-8")
+        self.assertIn("languages: ${{ inputs.languages }}", content)
+        self.assertNotIn("language: [javascript-typescript]", content)
+        self.assertNotIn("matrix:", content)
+
+    def test_govulncheck_uses_versioned_module_release(self) -> None:
+        content = (WORKFLOWS / "reusable-security-go.yml").read_text(encoding="utf-8")
+        self.assertIn("golang.org/x/vuln/cmd/govulncheck@v1.1.4", content)
+        self.assertNotIn("govulncheck@latest", content)
+
     def test_workflow_files_have_unique_names(self) -> None:
         names: list[str] = []
         for workflow in sorted(WORKFLOWS.glob("reusable-*.yml")):
