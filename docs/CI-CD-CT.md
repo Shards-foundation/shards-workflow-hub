@@ -4,7 +4,7 @@ This repository provides reusable GitHub Actions workflows for Node.js validatio
 
 ## Reusable workflow catalog
 
-The `.github/workflows/reusable-*.yml` files are opt-in building blocks. Call one from a caller workflow in your repository; the caller controls its triggers and may pin this repository to a reviewed commit SHA. Each workflow declares its own permissions and accepts inputs for common project-specific paths and versions.
+The `.github/workflows/reusable-*.yml` files are opt-in building blocks. Call one from a caller workflow in your repository; the caller controls its triggers and may pin this repository to a reviewed commit SHA. Each workflow declares its own permissions. Many expose inputs for project-specific paths and versions; the available inputs vary by workflow.
 
 | Workflow | Purpose |
 | --- | --- |

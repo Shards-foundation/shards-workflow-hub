@@ -58,7 +58,7 @@ python3 scripts/automations/git_report.py .
 
 ## Safety and exit behavior
 
-All commands provide `--help`, structured logging, and a non-zero exit status on input, validation, or network failures. HTTP, TCP, and TLS checks use bounded timeouts. HTTP check logs redact URL paths, credentials, and query parameters. DNS resolution delegates to the operating system resolver. File-writing commands create a separate output and refuse to overwrite an existing file unless `--force` is explicitly supplied; input and output paths cannot be the same. The utilities do not delete files or modify Git state. The directory backup excludes common generated/dependency directories (`.git`, `node_modules`, `.venv`, `venv`, and `__pycache__`) by default.
+All commands provide `--help`, structured logging, and a non-zero exit status on input, validation, or network failures. HTTP, TCP, and TLS socket operations have timeouts after DNS resolution; OS hostname resolution itself may exceed those limits. HTTP check logs redact URL paths, credentials, and query parameters. DNS resolution delegates to the operating system resolver. File-writing commands create a separate output and refuse to overwrite an existing file unless `--force` is explicitly supplied; input and output paths cannot be the same. The utilities do not delete files or modify Git state. The directory backup excludes common generated/dependency directories (`.git`, `node_modules`, `.venv`, `venv`, and `__pycache__`) by default.
 
 Smoke tests for the command catalog are run with:
 
@@ -126,9 +126,10 @@ python3 scripts/automations/json_duplicate_keys.py config.json
 python3 scripts/automations/git_tracked_secrets_check.py .
 python3 scripts/automations/git_conflict_check.py .
 python3 scripts/automations/env_drift_check.py .env.example .env.staging
-python3 scripts/automations/python_complexity_report.py src/ --threshold 10
-python3 scripts/automations/python_docstring_check.py src/
-python3 scripts/automations/shell_syntax_check.py scripts/ --shell bash
+python3 scripts/automations/python_complexity_report.py scripts/automations/ --threshold 10
+python3 scripts/automations/python_docstring_check.py scripts/automations/
+# Replace this example location with a directory containing .sh scripts
+python3 scripts/automations/shell_syntax_check.py ./your-shell-scripts/ --shell bash
 python3 scripts/automations/sqlite_backup.py app.db backups/app.db
 python3 scripts/automations/release_tag_check.py v1.4.0
 ```

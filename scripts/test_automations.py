@@ -378,6 +378,15 @@ class AutomationScriptTests(unittest.TestCase):
                     self.assertEqual(code, 1, stdout + stderr)
                     self.assertEqual(source.read_text(encoding="utf-8"), "preserve content\n")
 
+    def test_git_hygiene_supports_unborn_head(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-unborn-git-") as directory:
+            root = pathlib.Path(directory)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True, timeout=10)
+            (root / "new-file.txt").write_text("safe content\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "new-file.txt"], check=True, capture_output=True, timeout=10)
+            code, stdout, stderr = _run_script(AUTOMATIONS / "git_hygiene.py", str(root))
+            self.assertEqual(code, 0, stdout + stderr)
+
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
             workflow = pathlib.Path(directory) / "unsafe.yml"
