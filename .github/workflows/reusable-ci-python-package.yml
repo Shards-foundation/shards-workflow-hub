@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: "."
+      artifact-name:
+        description: Unique artifact name for parallel package builds
+        type: string
+        required: false
+        default: python-distributions
       test-command:
         description: Optional command to run tests before packaging
         type: string
@@ -46,7 +51,7 @@ jobs:
       - name: Upload distributions
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: python-distributions
+          name: ${{ inputs.artifact-name }}
           path: ${{ inputs.working-directory }}/dist/*
           if-no-files-found: error
           retention-days: 14

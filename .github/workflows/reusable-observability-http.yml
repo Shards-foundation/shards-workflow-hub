@@ -41,7 +41,7 @@ jobs:
             echo "::error::attempts and max-time-seconds must be positive integers"
             exit 2
           fi
-          if [ "$MAX_ATTEMPTS" -gt 5 ] || [ "$MAX_TIME" -gt 30 ]; then
+          if [ "${#MAX_ATTEMPTS}" -gt 2 ] || [ "${#MAX_TIME}" -gt 2 ] || [ "$MAX_ATTEMPTS" -gt 5 ] || [ "$MAX_TIME" -gt 30 ]; then
             echo "::error::attempts is capped at 5 and max-time-seconds at 30"
             exit 2
           fi

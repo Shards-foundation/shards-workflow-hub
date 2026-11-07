@@ -1,6 +1,6 @@
 # Runnable automation scripts
 
-The `scripts/automations/` directory contains standalone Python 3.9+ command-line utilities for routine file, data, repository, and connectivity tasks. They use only the Python standard library; no dependency installation is required. Run any command with `--help` for its exact arguments.
+The `scripts/automations/` directory contains standalone Python 3.9+ command-line utilities for routine file, data, repository, and connectivity tasks. They require no third-party Python packages. Git inspection commands also require a Git executable; shell syntax checks require bash or sh on PATH. Run any command with `--help` for its exact arguments.
 
 ## Examples
 

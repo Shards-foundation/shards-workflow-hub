@@ -3,7 +3,7 @@ on:
   workflow_call:
     secrets:
       GITLEAKS_LICENSE:
-        description: Optional Gitleaks license key for private organization repositories
+        description: Gitleaks license for organization-owned repos (including public); optional for individual public repositories
         required: false
 permissions:
   contents: read

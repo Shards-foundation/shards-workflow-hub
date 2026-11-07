@@ -36,6 +36,13 @@ jobs:
           terraform_wrapper: false
       - name: Check formatting
         run: terraform fmt -check -recursive
+      - name: Require committed Terraform lockfile
+        if: inputs.lockfile
+        run: |
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "::error::Missing .terraform.lock.hcl"
+            exit 1
+          fi
       - name: Initialize providers without backend
         run: terraform init -backend=false ${{ inputs.lockfile && '-lockfile=readonly' || '' }}
       - name: Validate configuration

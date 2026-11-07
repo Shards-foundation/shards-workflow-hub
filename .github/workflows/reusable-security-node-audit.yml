@@ -43,5 +43,13 @@ jobs:
           case "$PACKAGE_MANAGER" in
             npm) npm audit --audit-level="$SEVERITY" ;;
             pnpm) pnpm audit --audit-level "$SEVERITY" ;;
-            yarn) corepack enable && yarn audit --level "$SEVERITY" ;;
+            yarn)
+              corepack enable
+              YARN_VERSION="$(yarn --version)"
+              if [[ "$YARN_VERSION" == 1.* ]]; then
+                yarn audit --level "$SEVERITY"
+              else
+                yarn npm audit --all --recursive --severity "$SEVERITY"
+              fi
+              ;;
           esac
