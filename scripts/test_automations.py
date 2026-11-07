@@ -263,6 +263,12 @@ class AutomationScriptTests(unittest.TestCase):
                 )
                 self.assertEqual(code, 1, stdout + stderr)
                 self.assertFalse(output.exists(), "Malformed CSV must not produce partial output")
+            source.write_text("id,name\n\n1,Alice\n", encoding="utf-8")
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "csv_to_json.py", str(source), str(output)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            self.assertEqual(json.loads(output.read_text(encoding="utf-8")), [{"id": "1", "name": "Alice"}])
 
     def test_hardlink_output_is_rejected_even_with_force(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-hardlink-") as directory:
