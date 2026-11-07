@@ -363,6 +363,23 @@ class AutomationScriptTests(unittest.TestCase):
             code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(source))
             self.assertEqual(code, 0, stdout + stderr)
 
+    def test_new_checksum_manifest_inside_source_tree_is_allowed(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-in-tree-manifest-") as directory:
+            root = pathlib.Path(directory)
+            (root / "source.txt").write_text("checksum this\n", encoding="utf-8")
+            manifest = root / "SHA256SUMS.txt"
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "checksum_tree.py", str(root), "--output", str(manifest)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            self.assertTrue(manifest.is_file())
+            self.assertIn("source.txt", manifest.read_text(encoding="utf-8"))
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "checksum_tree.py", str(root), "--output", str(manifest), "--force"
+            )
+            self.assertEqual(code, 1, stdout + stderr)
+            self.assertIn("source.txt", manifest.read_text(encoding="utf-8"))
+
     def test_source_tree_writers_refuse_existing_input(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-guard-") as directory:
             root = pathlib.Path(directory)
