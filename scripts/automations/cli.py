@@ -39,7 +39,13 @@ CHUNK_SIZE = 1024 * 1024
 DEFAULT_TIMEOUT = 10.0
 ARCHIVE_EXCLUDES = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 SECRET_PATTERN = re.compile(
-    r"(?i)(api[_-]?key|secret|token|password|passwd|private[_-]?key)\s*([:=])\s*([^\s,;]+)"
+    r"""(?ix)
+    (?<![A-Za-z0-9_])
+    ((?:[A-Za-z][A-Za-z0-9]*[_-])*
+     (?:api[_-]?key|secret(?:[_-]access[_-]key|[_-]key)?|token|password|passwd|private[_-]?key))
+    (\s*['"]?\s*[:=]\s*)
+    ("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;'"]+)
+    """
 )
 
 
@@ -323,7 +329,7 @@ def cmd_json_to_csv(args: argparse.Namespace) -> int:
 def _walk_files(directory: Path, exclude: Optional[set[Path]] = None) -> Iterable[Path]:
     excluded = exclude or set()
     for path in sorted(directory.rglob("*")):
-        if any(part in ARCHIVE_EXCLUDES for part in path.parts):
+        if any(part in ARCHIVE_EXCLUDES for part in path.relative_to(directory).parts):
             continue
         if not path.is_symlink() and path.is_file() and path.resolve() not in excluded:
             yield path
@@ -490,6 +496,14 @@ def cmd_log_summary(args: argparse.Namespace) -> int:
     return 0
 
 
+def _redact_match(match: re.Match) -> str:
+    """Redact both unquoted and quoted values while preserving JSON/log syntax."""
+    value = match.group(3)
+    quoted = len(value) >= 2 and value[0] in {"'", '"'} and value[-1] == value[0]
+    quote = value[0] if quoted else ""
+    return f"{match.group(1)}{match.group(2)}{quote}[REDACTED]{quote}"
+
+
 def cmd_redact_log(args: argparse.Namespace) -> int:
     source = ensure_file(args.input)
     ensure_distinct_paths(source, args.output)
@@ -497,7 +511,7 @@ def cmd_redact_log(args: argparse.Namespace) -> int:
     substitutions = 0
     with source.open("r", encoding="utf-8", errors="replace") as reader, target.open("w", encoding="utf-8") as writer:
         for line in reader:
-            redacted, count = SECRET_PATTERN.subn(lambda match: f"{match.group(1)}{match.group(2)}[REDACTED]", line)
+            redacted, count = SECRET_PATTERN.subn(_redact_match, line)
             substitutions += count
             writer.write(redacted)
     LOGGER.info("Log redaction complete: replacements=%d output=%s", substitutions, target)
