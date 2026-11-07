@@ -812,7 +812,7 @@ def cmd_csv_rows_check(args: argparse.Namespace) -> int:
     return 1 if failures else 0
 
 
-def _env_keys(path: Path) -> set[str]:
+def read_env_keys(path: Path) -> set[str]:
     keys = set()
     with _resolve_file(path).open("r", encoding="utf-8", errors="replace") as stream:
         for line in stream:
@@ -829,8 +829,8 @@ def _env_keys(path: Path) -> set[str]:
 
 
 def cmd_env_drift_check(args: argparse.Namespace) -> int:
-    expected = _env_keys(args.template)
-    actual = _env_keys(args.environment)
+    expected = read_env_keys(args.template)
+    actual = read_env_keys(args.environment)
     missing = sorted(expected - actual)
     extra = sorted(actual - expected)
     for key in missing:
