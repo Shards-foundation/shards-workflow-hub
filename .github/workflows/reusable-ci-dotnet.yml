@@ -31,9 +31,15 @@ jobs:
         with:
           dotnet-version: ${{ inputs.dotnet-version }}
       - name: Restore dependencies
-        run: dotnet restore "${{ inputs.solution }}"
+        env:
+          SOLUTION_PATH: ${{ inputs.solution }}
+        run: dotnet restore "$SOLUTION_PATH"
       - name: Verify formatting
         if: inputs.verify-format
-        run: dotnet format "${{ inputs.solution }}" --verify-no-changes --no-restore
+        env:
+          SOLUTION_PATH: ${{ inputs.solution }}
+        run: dotnet format "$SOLUTION_PATH" --verify-no-changes --no-restore
       - name: Run tests
-        run: dotnet test "${{ inputs.solution }}" --configuration Release --no-restore --verbosity normal
+        env:
+          SOLUTION_PATH: ${{ inputs.solution }}
+        run: dotnet test "$SOLUTION_PATH" --configuration Release --no-restore --verbosity normal

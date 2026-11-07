@@ -3,7 +3,7 @@ on:
   workflow_call:
     inputs:
       args:
-        description: Additional lychee arguments
+        description: Full replacement lychee argument string (including file globs)
         type: string
         required: false
         default: "--verbose --no-progress --accept 200,206,429 './**/*.md' './**/*.html'"

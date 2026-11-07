@@ -34,10 +34,10 @@ SECRET_RULES = (
     ("credential-assignment", re.compile(
         r"""(?ix)
         (?<![A-Za-z0-9_])
-        (?:[A-Za-z][A-Za-z0-9]*[_-])*
+        (?:(?-i:[a-z][a-z0-9]*)(?=(?-i:[A-Z]))|[A-Za-z][A-Za-z0-9]*[_-])*
         (?:api[_-]?key|secret(?:[_-]access[_-]key|[_-]key)?|token|password|passwd|private[_-]?key)
         ['"]?\s*[:=]\s*
-        (?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;'"]{8,})
+        (?:"(?:\\.|[^"\\])+"|'(?:\\.|[^'\\])+'|[^\s,;'"]{8,})
         """
     )),
     ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b")),

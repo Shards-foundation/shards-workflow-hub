@@ -47,8 +47,8 @@ jobs:
           fi
           delay=1
           for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
-            status="$(curl --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time "$MAX_TIME" "$HEALTH_URL" 2>/dev/null || true)"
-            if [ "$status" = "$EXPECTED_STATUS" ]; then
+            status=""
+            if status="$(curl --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time "$MAX_TIME" "$HEALTH_URL" 2>/dev/null)" && [ "$status" = "$EXPECTED_STATUS" ]; then
               echo "Endpoint healthy: expected status received on attempt $attempt"
               exit 0
             fi

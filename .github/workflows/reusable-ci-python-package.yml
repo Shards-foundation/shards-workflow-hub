@@ -17,6 +17,11 @@ on:
         type: string
         required: false
         default: python-distributions
+      test-install-command:
+        description: Install project and test dependencies when tests are enabled
+        type: string
+        required: false
+        default: "python -m pip install -e ."
       test-command:
         description: Optional command to run tests before packaging
         type: string
@@ -39,6 +44,11 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install build tools
         run: python -m pip install --upgrade build twine
+      - name: Install test dependencies
+        if: inputs.test-command != ''
+        env:
+          INSTALL_COMMAND: ${{ inputs.test-install-command }}
+        run: bash -euo pipefail -c "$INSTALL_COMMAND"
       - name: Run tests
         if: inputs.test-command != ''
         env:

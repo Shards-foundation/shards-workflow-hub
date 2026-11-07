@@ -332,6 +332,44 @@ class AutomationScriptTests(unittest.TestCase):
                 self.assertEqual(code, 1)
                 self.assertNotIn(token, stdout + stderr)
 
+    def test_camelcase_credentials_and_empty_quotes(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-camelcase-") as directory:
+            root = pathlib.Path(directory)
+            source = root / "source.txt"
+            output = root / "output.txt"
+            source.write_text(
+                'accessToken="secret access value"\n'
+                'dbPassword="another secret"\n'
+                'TOKEN=""\n'
+                "PASSWORD=''\n",
+                encoding="utf-8",
+            )
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "redact_log.py", str(source), str(output)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            redacted = output.read_text(encoding="utf-8")
+            self.assertIn('accessToken="[REDACTED]"', redacted)
+            self.assertIn('dbPassword="[REDACTED]"', redacted)
+            self.assertIn('TOKEN=""', redacted)
+            self.assertIn("PASSWORD=''", redacted)
+            source.write_text('TOKEN=""\nPASSWORD=\'\'\n', encoding="utf-8")
+            code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(source))
+            self.assertEqual(code, 0, stdout + stderr)
+
+    def test_source_tree_writers_refuse_existing_input(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-guard-") as directory:
+            root = pathlib.Path(directory)
+            source = root / "source.txt"
+            source.write_text("preserve content\n", encoding="utf-8")
+            for script in ("checksum_tree.py", "directory_backup.py"):
+                with self.subTest(script=script):
+                    code, stdout, stderr = _run_script(
+                        AUTOMATIONS / script, str(root), str(source), "--force"
+                    )
+                    self.assertEqual(code, 1, stdout + stderr)
+                    self.assertEqual(source.read_text(encoding="utf-8"), "preserve content\n")
+
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
             workflow = pathlib.Path(directory) / "unsafe.yml"

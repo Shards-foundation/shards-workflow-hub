@@ -48,4 +48,9 @@ jobs:
       - name: Run tests
         env:
           TEST_COMMAND: ${{ inputs.test-command }}
-        run: bash -euo pipefail -c "$TEST_COMMAND"
+        run: |
+          if [ -z "$TEST_COMMAND" ]; then
+            echo "::error::test-command must not be empty"
+            exit 2
+          fi
+          bash -euo pipefail -c "$TEST_COMMAND"

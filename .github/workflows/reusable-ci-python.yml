@@ -11,7 +11,7 @@ on:
         description: Optional dependency installation command
         type: string
         required: false
-        default: "python -m pip install -e .[dev]"
+        default: "python -m pip install -e '.[dev]'"
       test-command:
         description: Test command
         type: string

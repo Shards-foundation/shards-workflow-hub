@@ -41,10 +41,10 @@ ARCHIVE_EXCLUDES = {".git", "node_modules", "__pycache__", ".venv", "venv"}
 SECRET_PATTERN = re.compile(
     r"""(?ix)
     (?<![A-Za-z0-9_])
-    ((?:[A-Za-z][A-Za-z0-9]*[_-])*
+    ((?:(?-i:[a-z][a-z0-9]*)(?=(?-i:[A-Z]))|[A-Za-z][A-Za-z0-9]*[_-])*
      (?:api[_-]?key|secret(?:[_-]access[_-]key|[_-]key)?|token|password|passwd|private[_-]?key))
     (\s*['"]?\s*[:=]\s*)
-    ("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;'"]+)
+    ("(?:\\.|[^"\\])+"|'(?:\\.|[^'\\])+'|[^\s,;'"]+)
     """
 )
 
@@ -351,6 +351,8 @@ def _walk_files(directory: Path, exclude: Optional[set[Path]] = None) -> Iterabl
 def cmd_checksum_tree(args: argparse.Namespace) -> int:
     root = ensure_dir(args.directory)
     target = output_path(args.output, args.force)
+    if target.is_relative_to(root):
+        raise ValueError("Output must be outside the source directory to prevent overwriting source files")
     files = list(_walk_files(root, {target}))
     with target.open("w", encoding="utf-8") as stream:
         for path in files:
@@ -466,6 +468,8 @@ def cmd_compare_directories(args: argparse.Namespace) -> int:
 def cmd_directory_backup(args: argparse.Namespace) -> int:
     root = ensure_dir(args.directory)
     target = output_path(args.output, args.force)
+    if target.is_relative_to(root):
+        raise ValueError("Output must be outside the source directory to prevent overwriting source files")
     files = list(_walk_files(root, {target}))
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in files:
@@ -565,7 +569,7 @@ def cmd_check_url(args: argparse.Namespace) -> int:
         LOGGER.error("URL returned HTTP status %d: %s", error.code, safe_url(url))
         return 1
     except urllib.error.URLError as error:
-        LOGGER.error("URL request failed: url=%s reason=%s", safe_url(url), error.reason)
+        LOGGER.error("URL request failed: url=%s reason_type=%s", safe_url(url), type(error.reason).__name__)
         return 1
 
 

@@ -6,7 +6,7 @@ on:
         description: Files to check (codespell glob syntax)
         type: string
         required: false
-        default: "*.md"
+        default: "**/*.md"
       ignore-words-file:
         description: Optional codespell ignore-words file
         type: string
@@ -23,5 +23,5 @@ jobs:
       - name: Check spelling
         uses: codespell-project/actions-codespell@8f01853be192eb0f849a5c7d721450e7a467c579 # v2
         with:
-          files: ${{ inputs.files }}
+          path: ${{ inputs.files }}
           ignore_words_file: ${{ inputs.ignore-words-file }}

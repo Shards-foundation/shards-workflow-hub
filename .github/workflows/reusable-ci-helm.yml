@@ -7,6 +7,11 @@ on:
         type: string
         required: false
         default: ./chart
+      values-file:
+        description: Optional Helm values file path
+        type: string
+        required: false
+        default: ""
       helm-version:
         description: Helm version
         type: string
@@ -24,11 +29,23 @@ jobs:
         uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4
         with:
           version: ${{ inputs.helm-version }}
+      - name: Fetch declared Helm chart dependencies
+        env:
+          CHART_DIRECTORY: ${{ inputs.chart-directory }}
+        run: helm dependency build "$CHART_DIRECTORY"
       - name: Lint chart
         env:
           CHART_DIRECTORY: ${{ inputs.chart-directory }}
-        run: helm lint "$CHART_DIRECTORY"
+          VALUES_FILE: ${{ inputs.values-file }}
+        run: |
+          args=()
+          if [ -n "$VALUES_FILE" ]; then args=(-f "$VALUES_FILE"); fi
+          helm lint "$CHART_DIRECTORY" "${args[@]}"
       - name: Render chart templates
         env:
           CHART_DIRECTORY: ${{ inputs.chart-directory }}
-        run: helm template workflow-validation "$CHART_DIRECTORY" --debug
+          VALUES_FILE: ${{ inputs.values-file }}
+        run: |
+          args=()
+          if [ -n "$VALUES_FILE" ]; then args=(-f "$VALUES_FILE"); fi
+          helm template workflow-validation "$CHART_DIRECTORY" --debug "${args[@]}"

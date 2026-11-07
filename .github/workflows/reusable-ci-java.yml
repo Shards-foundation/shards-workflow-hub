@@ -50,7 +50,17 @@ jobs:
           esac
       - name: Test with Maven
         if: inputs.build-tool == 'maven'
-        run: ./mvnw --batch-mode --no-transfer-progress verify
+        run: |
+          if [ -f ./mvnw ]; then
+            bash ./mvnw --batch-mode --no-transfer-progress verify
+          else
+            mvn --batch-mode --no-transfer-progress verify
+          fi
       - name: Test with Gradle
         if: inputs.build-tool == 'gradle'
-        run: ./gradlew --no-daemon check
+        run: |
+          if [ -f ./gradlew ]; then
+            bash ./gradlew --no-daemon check
+          else
+            gradle --no-daemon check
+          fi

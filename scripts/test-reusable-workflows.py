@@ -56,6 +56,17 @@ class ReusableWorkflowCatalogTests(unittest.TestCase):
         self.assertIn("golang.org/x/vuln/cmd/govulncheck@v1.1.4", content)
         self.assertNotIn("govulncheck@latest", content)
 
+    def test_workflow_security_regressions(self) -> None:
+        dotnet = (WORKFLOWS / "reusable-ci-dotnet.yml").read_text(encoding="utf-8")
+        self.assertIn('run: dotnet restore "$SOLUTION_PATH"', dotnet)
+        spelling = (WORKFLOWS / "reusable-ci-spelling.yml").read_text(encoding="utf-8")
+        self.assertIn("          path: ", spelling)
+        self.assertNotIn("          files: ", spelling)
+        http = (WORKFLOWS / "reusable-observability-http.yml").read_text(encoding="utf-8")
+        self.assertNotIn('2>/dev/null || true)', http)
+        precommit = (WORKFLOWS / "reusable-ci-precommit.yml").read_text(encoding="utf-8")
+        self.assertIn("shlex.split", precommit)
+
     def test_workflow_files_have_unique_names(self) -> None:
         names: list[str] = []
         for workflow in sorted(WORKFLOWS.glob("reusable-*.yml")):

@@ -31,5 +31,8 @@ jobs:
         env:
           PRECOMMIT_ARGS: ${{ inputs.args }}
         run: |
-          read -r -a args <<< "$PRECOMMIT_ARGS"
+          args_file="$(mktemp)"
+          trap 'rm -f "$args_file"' EXIT
+          python -c 'import os, shlex, sys; sys.stdout.buffer.write(b"".join(arg.encode() + bytes([0]) for arg in shlex.split(os.environ["PRECOMMIT_ARGS"])))' > "$args_file"
+          mapfile -d '' -t args < "$args_file"
           pre-commit run "${args[@]}"
