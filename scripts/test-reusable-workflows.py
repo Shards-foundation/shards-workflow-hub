@@ -54,6 +54,28 @@ class ReusableWorkflowCatalogTests(unittest.TestCase):
                     self.assertRegex(match.group(1), r"@[0-9a-f]{40}$")
                     self.assertRegex(line, r"\s+#\s+\S+\s*$")
 
+    def test_write_permissions_are_explicitly_allowlisted(self) -> None:
+        """Reject privilege escalation in top-level and job-level permissions."""
+        allowed_writes = {
+            "reusable-cd-ghcr.yml": {"packages"},
+            "reusable-maintenance-stale.yml": {"issues", "pull-requests"},
+            "reusable-security-codeql.yml": {"security-events"},
+        }
+        scope_pattern = re.compile(
+            r"(?m)^\s+(contents|actions|checks|deployments|id-token|issues|packages|"
+            r"pull-requests|security-events|statuses):\s*(\w+)\s*$"
+        )
+        for workflow in sorted(WORKFLOWS.glob("reusable-*.yml")):
+            content = workflow.read_text(encoding="utf-8")
+            for scope, level in scope_pattern.findall(content):
+                with self.subTest(workflow=workflow.name, scope=scope, level=level):
+                    self.assertIn(level, {"none", "read", "write"})
+                    if level == "write":
+                        self.assertIn(
+                            scope, allowed_writes.get(workflow.name, set()),
+                            f"Unexpected write permission in {workflow.name}: {scope}",
+                        )
+
     def test_actionlint_workflow_does_not_request_write_permissions(self) -> None:
         content = (WORKFLOWS / "reusable-ci-actionlint.yml").read_text(encoding="utf-8")
         self.assertNotRegex(content, r"(?m)^\s+(?:checks|pull-requests):\s*write\s*$")
