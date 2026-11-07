@@ -290,7 +290,7 @@ class AutomationScriptTests(unittest.TestCase):
             (root / " leading.txt").write_text("two\n", encoding="utf-8")
             manifest = base / "checksums.txt"
             code, stdout, stderr = _run_script(
-                AUTOMATIONS / "checksum_tree.py", str(root), str(manifest)
+                AUTOMATIONS / "checksum_tree.py", str(root), "--output", str(manifest)
             )
             self.assertEqual(code, 0, stdout + stderr)
             code, stdout, stderr = _run_script(
@@ -365,7 +365,9 @@ class AutomationScriptTests(unittest.TestCase):
             for script in ("checksum_tree.py", "directory_backup.py"):
                 with self.subTest(script=script):
                     code, stdout, stderr = _run_script(
-                        AUTOMATIONS / script, str(root), str(source), "--force"
+                        AUTOMATIONS / script, str(root),
+                        *(("--output", str(source)) if script == "checksum_tree.py" else (str(source),)),
+                        "--force"
                     )
                     self.assertEqual(code, 1, stdout + stderr)
                     self.assertEqual(source.read_text(encoding="utf-8"), "preserve content\n")
