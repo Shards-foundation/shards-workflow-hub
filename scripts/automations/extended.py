@@ -255,7 +255,7 @@ def require_http_url(url: str) -> str:
         parts.port
     except ValueError as error:
         raise ValueError("URL must be a valid http(s) URL with a host") from error
-    if parts.scheme.lower() not in {"http", "https"} or not hostname:
+    if parts.scheme.lower() not in {"http", "https"} or not hostname or any(char.isspace() for char in url):
         raise ValueError("URL must be a valid http(s) URL with a host")
     return url
 
