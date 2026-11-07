@@ -353,8 +353,8 @@ def _walk_files(directory: Path, exclude: Optional[set[Path]] = None) -> Iterabl
 def cmd_checksum_tree(args: argparse.Namespace) -> int:
     root = ensure_dir(args.directory)
     target = output_path(args.output, args.force)
-    if target.is_relative_to(root):
-        raise ValueError("Output must be outside the source directory to prevent overwriting source files")
+    if target.is_relative_to(root) and target.exists():
+        raise ValueError("Refusing to overwrite an existing file inside the source directory")
     files = list(_walk_files(root, {target}))
     with target.open("w", encoding="utf-8") as stream:
         for path in files:
@@ -470,8 +470,8 @@ def cmd_compare_directories(args: argparse.Namespace) -> int:
 def cmd_directory_backup(args: argparse.Namespace) -> int:
     root = ensure_dir(args.directory)
     target = output_path(args.output, args.force)
-    if target.is_relative_to(root):
-        raise ValueError("Output must be outside the source directory to prevent overwriting source files")
+    if target.is_relative_to(root) and target.exists():
+        raise ValueError("Refusing to overwrite an existing file inside the source directory")
     files = list(_walk_files(root, {target}))
     with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         for path in files:
