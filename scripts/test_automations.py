@@ -126,12 +126,38 @@ class AutomationScriptTests(unittest.TestCase):
     def test_secret_scan_reports_a_match_without_printing_secret_value(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-secret-test-") as directory:
             root = pathlib.Path(directory)
-            token = "ghp_" + ("a" * 36)
+            token = "synthetic-fixture-" + uuid.uuid4().hex
             (root / "settings.env").write_text(f"GITHUB_TOKEN={token}\n", encoding="utf-8")
             return_code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(root))
             self.assertEqual(return_code, 1)
             self.assertIn("pattern matched", (stdout + stderr).lower())
             self.assertNotIn(token, stdout + stderr)
+
+    def test_environment_template_and_drift_share_safe_key_parser(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-env-test-") as directory:
+            root = pathlib.Path(directory)
+            source = root / "environment.env"
+            template = root / "template.env"
+            source.write_text(
+                "# comment\nexport ALPHA=private-value\nBETA=another-private-value\n",
+                encoding="utf-8",
+            )
+            return_code, stdout, stderr = _run_script(
+                AUTOMATIONS / "env_template.py", str(source), str(template)
+            )
+            self.assertEqual(return_code, 0, stdout + stderr)
+            self.assertEqual(template.read_text(encoding="utf-8"), "ALPHA=\nBETA=\n")
+            return_code, stdout, stderr = _run_script(
+                AUTOMATIONS / "env_drift_check.py", str(template), str(source)
+            )
+            self.assertEqual(return_code, 0, stdout + stderr)
+            self.assertNotIn("private-value", stdout + stderr)
+            source.write_text("ALPHA=secret\nGAMMA=secret\n", encoding="utf-8")
+            return_code, stdout, stderr = _run_script(
+                AUTOMATIONS / "env_drift_check.py", str(template), str(source)
+            )
+            self.assertEqual(return_code, 1, stdout + stderr)
+            self.assertIn("missing", (stdout + stderr).lower())
 
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
