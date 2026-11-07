@@ -6,6 +6,7 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import pathlib
 import runpy
 import subprocess  # nosec B404: tests invoke local wrappers with fixed args and shell disabled.
@@ -249,6 +250,87 @@ class AutomationScriptTests(unittest.TestCase):
         self.assertEqual(code, 0, stdout + stderr)
         self.assertNotIn("remained unhealthy", (stdout + stderr).lower())
         self.assertEqual(RecoveringHandler.requests, 2)
+
+    def test_csv_conversions_reject_extra_fields_and_duplicate_headers(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-csv-safety-") as directory:
+            root = pathlib.Path(directory)
+            source = root / "source.csv"
+            output = root / "output.json"
+            for malformed in ("id,name\n1,Alice,paid\n", "id,id\n1,2\n"):
+                source.write_text(malformed, encoding="utf-8")
+                code, stdout, stderr = _run_script(
+                    AUTOMATIONS / "csv_to_json.py", str(source), str(output)
+                )
+                self.assertEqual(code, 1, stdout + stderr)
+                self.assertFalse(output.exists(), "Malformed CSV must not produce partial output")
+
+    def test_hardlink_output_is_rejected_even_with_force(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-hardlink-") as directory:
+            root = pathlib.Path(directory)
+            source = root / "source.json"
+            target = root / "target.csv"
+            content = '[{"name":"preserve-me"}]\n'
+            source.write_text(content, encoding="utf-8")
+            try:
+                os.link(source, target)
+            except (OSError, NotImplementedError):
+                self.skipTest("Hard links are unavailable on this filesystem")
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "json_to_csv.py", str(source), str(target), "--force"
+            )
+            self.assertEqual(code, 1, stdout + stderr)
+            self.assertEqual(source.read_text(encoding="utf-8"), content)
+
+    def test_generated_manifest_handles_leading_star_and_space(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-manifest-") as directory:
+            base = pathlib.Path(directory)
+            root = base / "files"
+            root.mkdir()
+            (root / "*leading.txt").write_text("one\n", encoding="utf-8")
+            (root / " leading.txt").write_text("two\n", encoding="utf-8")
+            manifest = base / "checksums.txt"
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "checksum_tree.py", str(root), str(manifest)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "manifest_verify.py", str(root), str(manifest)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+
+    def test_requirements_pin_check_rejects_wildcards(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-pin-check-") as directory:
+            source = pathlib.Path(directory) / "requirements.txt"
+            source.write_text("requests==2.*\n", encoding="utf-8")
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "requirements_pin_check.py", str(source)
+            )
+            self.assertEqual(code, 1, stdout + stderr)
+            source.write_text("requests==2.32.3\n", encoding="utf-8")
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "requirements_pin_check.py", str(source)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+
+    def test_release_tag_check_enforces_semver_prerelease_identifiers(self) -> None:
+        for tag, expected in (
+            ("v1.2.3", 0), ("1.2.3-alpha.1", 0),
+            ("v1.2.3-01", 1), ("v1.2.3-alpha..1", 1),
+        ):
+            with self.subTest(tag=tag):
+                code, stdout, stderr = _run_script(
+                    AUTOMATIONS / "release_tag_check.py", tag
+                )
+                self.assertEqual(code, expected, stdout + stderr)
+
+    def test_invalid_url_cannot_leak_query_string(self) -> None:
+        token = uuid.uuid4().hex
+        url = f"http://example.com/bad path?token={token}"
+        for script in ("check_url.py", "http_retry_check.py", "service_json_health.py"):
+            with self.subTest(script=script):
+                code, stdout, stderr = _run_script(AUTOMATIONS / script, url)
+                self.assertEqual(code, 1)
+                self.assertNotIn(token, stdout + stderr)
 
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
