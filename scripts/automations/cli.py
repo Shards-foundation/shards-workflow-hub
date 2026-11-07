@@ -25,7 +25,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional, Union
 
-from scripts.automations.extended import EXTENDED_HANDLERS, add_extended_parsers, require_http_url, safe_url
+from scripts.automations.extended import (
+    EXTENDED_HANDLERS,
+    add_extended_parsers,
+    read_env_keys,
+    require_http_url,
+    safe_url,
+)
 
 LOGGER = logging.getLogger("shards.automation")
 LOG_FORMAT = "%(asctime)s %(levelname)s %(message)s"
@@ -561,25 +567,13 @@ def cmd_disk_report(args: argparse.Namespace) -> int:
 def cmd_env_template(args: argparse.Namespace) -> int:
     source = ensure_file(args.file)
     ensure_distinct_paths(source, args.output)
+    keys = read_env_keys(source)
     target = output_path(args.output, args.force)
-    keys: set[str] = set()
-    with source.open("r", encoding="utf-8", errors="replace") as stream:
-        for line in stream:
-            stripped = line.strip()
-            if not stripped or stripped.startswith("#"):
-                continue
-            if stripped.startswith("export "):
-                stripped = stripped[7:].lstrip()
-            key, separator, _value = stripped.partition("=")
-            key = key.strip()
-            if separator and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key):
-                keys.add(key)
     with target.open("w", encoding="utf-8") as stream:
         for key in sorted(keys):
             stream.write(f"{key}=\n")
     LOGGER.info("Environment template created: keys=%d output=%s (source values were not read into logs)", len(keys), target)
     return 0
-
 
 HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
     "json-validate": cmd_json_validate,
