@@ -68,8 +68,10 @@ def output_path(path: Path, force: bool) -> Path:
 
 def ensure_distinct_paths(source: Path, target: Path) -> None:
     """Reject an output path that resolves to the input file."""
-    if source.expanduser().resolve() == target.expanduser().resolve():
-        raise ValueError("Input and output paths must be different")
+    source_path = source.expanduser().resolve()
+    target_path = target.expanduser().resolve()
+    if source_path == target_path or (target_path.exists() and source_path.samefile(target_path)):
+        raise ValueError("Input and output paths must reference different files")
 
 
 def sha256_file(path: Path) -> str:
@@ -249,12 +251,23 @@ def cmd_csv_profile(args: argparse.Namespace) -> int:
 
 
 def _csv_rows(path: Path) -> tuple[list[str], Iterable[dict[str, Optional[str]]]]:
+    """Preflight the complete CSV so conversions cannot silently discard fields."""
+    with path.open("r", encoding="utf-8-sig", newline="") as source:
+        preflight = csv.reader(source)
+        headers = next(preflight, [])
+        if not headers:
+            raise ValueError(f"CSV must include a header row: {path}")
+        if len(headers) != len(set(headers)):
+            raise ValueError(f"CSV has duplicate header names: {path}")
+        for row in preflight:
+            if len(row) != len(headers):
+                raise ValueError(
+                    f"CSV field count mismatch at line {preflight.line_num}: "
+                    f"expected {len(headers)}, got {len(row)}"
+                )
     stream = path.open("r", encoding="utf-8-sig", newline="")
     reader = csv.DictReader(stream)
-    if not reader.fieldnames:
-        stream.close()
-        raise ValueError(f"CSV must include a header row: {path}")
-    return list(reader.fieldnames), _closing_rows(reader, stream)
+    return headers, _closing_rows(reader, stream)
 
 
 def _closing_rows(reader: csv.DictReader, stream: Any) -> Iterable[dict[str, Optional[str]]]:
