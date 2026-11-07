@@ -6,7 +6,7 @@ on:
         description: npm, pnpm, or yarn
         type: string
         required: false
-        default: npm
+        default: pnpm
       severity:
         description: Minimum severity level passed to npm audit
         type: string

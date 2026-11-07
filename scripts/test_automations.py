@@ -125,6 +125,13 @@ class AutomationScriptTests(unittest.TestCase):
                 self.assertEqual(return_code, 0, stderr)
                 self.assertIn("usage:", stdout.lower())
 
+    def test_standalone_help_has_valid_script_usage(self) -> None:
+        code, stdout, stderr = _run_script(AUTOMATIONS / "check_port.py", "--help")
+        self.assertEqual(code, 0, stderr)
+        self.assertIn("usage: check_port.py", stdout.lower())
+        self.assertIn("host", stdout.lower())
+        self.assertIn("port", stdout.lower())
+
     def test_secret_scan_reports_a_match_without_printing_secret_value(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-secret-test-") as directory:
             root = pathlib.Path(directory)

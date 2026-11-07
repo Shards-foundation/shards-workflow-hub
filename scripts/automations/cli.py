@@ -99,7 +99,7 @@ def ensure_dir(path: Path) -> Path:
     return resolved
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(forced_command: Optional[str] = None) -> argparse.ArgumentParser:
     """Build parsers for every standalone command and the aggregate CLI."""
     parser = argparse.ArgumentParser(description="Safe, report-first automation utilities")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -199,6 +199,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--force", action="store_true")
 
     add_extended_parsers(commands)
+    if forced_command is not None:
+        selected = commands.choices.get(forced_command.replace("_", "-"))
+        if selected is None:
+            raise ValueError(f"Unsupported automation command: {forced_command}")
+        selected.prog = Path(sys.argv[0]).name
     return parser
 
 
@@ -640,7 +645,7 @@ def main(argv: Optional[list[str]] = None, forced_command: Optional[str] = None)
     arguments = list(sys.argv[1:] if argv is None else argv)
     if forced_command is not None:
         arguments.insert(0, forced_command.replace("_", "-"))
-    parser = build_parser()
+    parser = build_parser(forced_command=forced_command)
     args = parser.parse_args(arguments)
     try:
         configure_logging(args.log_level)
