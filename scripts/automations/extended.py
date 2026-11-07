@@ -719,16 +719,17 @@ def cmd_git_hygiene(args: argparse.Namespace) -> int:
     status = subprocess.run(["git", "-C", str(root), "status", "--short", "--untracked-files=all"], capture_output=True, text=True, timeout=20)  # nosec B603
     if status.returncode != 0:
         raise ValueError(status.stderr.strip() or f"Not a Git repository: {root}")
-    whitespace = subprocess.run(["git", "-C", str(root), "diff", "HEAD", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
-    if whitespace.returncode != 0:
+    whitespace = subprocess.run(["git", "-C", str(root), "diff", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
+    staged_whitespace = subprocess.run(["git", "-C", str(root), "diff", "--cached", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
+    if whitespace.returncode != 0 or staged_whitespace.returncode != 0:
         LOGGER.error("Git whitespace check failed")
-        for line in whitespace.stdout.splitlines()[:50]:
+        for line in (whitespace.stdout + "\n" + staged_whitespace.stdout).splitlines()[:50]:
             LOGGER.error("%s", line)
     changed = [line for line in status.stdout.splitlines() if line.strip()]
-    LOGGER.info("Git hygiene: root=%s changed_paths=%d whitespace_errors=%s", root, len(changed), whitespace.returncode != 0)
+    LOGGER.info("Git hygiene: root=%s changed_paths=%d whitespace_errors=%s", root, len(changed), (whitespace.returncode != 0 or staged_whitespace.returncode != 0))
     for line in changed[:100]:
         LOGGER.info("git_status=%s", line)
-    if whitespace.returncode != 0 or (args.fail_on_dirty and changed):
+    if whitespace.returncode != 0 or staged_whitespace.returncode != 0 or (args.fail_on_dirty and changed):
         return 1
     return 0
 
