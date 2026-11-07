@@ -24,9 +24,6 @@ on:
         default: false
 permissions:
   contents: read
-concurrency:
-  group: go-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -44,7 +41,7 @@ jobs:
           cache-dependency-path: ${{ inputs.working-directory }}/go.sum
       - name: Verify formatting
         run: |
-          unformatted="$(find . -type f -name '*.go' -not -path './vendor/*' -print0 | xargs -0 -r gofmt -l)"
+          unformatted="$(find . -type f -name '*.go' -not -path '*/vendor/*' -print0 | xargs -0 -r gofmt -l)"
           if [ -n "$unformatted" ]; then
             printf 'Go files need formatting:\n%s\n' "$unformatted"
             exit 1

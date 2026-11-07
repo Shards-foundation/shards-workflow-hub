@@ -23,9 +23,6 @@ on:
         default: 15
 permissions:
   contents: read
-concurrency:
-  group: http-health-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   health:
     runs-on: ubuntu-latest

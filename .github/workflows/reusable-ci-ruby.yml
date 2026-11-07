@@ -19,9 +19,6 @@ on:
         default: bundle exec rake test
 permissions:
   contents: read
-concurrency:
-  group: ruby-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest

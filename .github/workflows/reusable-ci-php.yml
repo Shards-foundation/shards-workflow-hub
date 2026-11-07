@@ -24,9 +24,6 @@ on:
         default: "."
 permissions:
   contents: read
-concurrency:
-  group: php-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest

@@ -12,6 +12,11 @@ on:
         type: string
         required: false
         default: requirements.txt
+      install-command:
+        description: Install the project dependencies when requirements-file is empty
+        type: string
+        required: false
+        default: "python -m pip install -e ."
       working-directory:
         description: Project directory
         type: string
@@ -19,9 +24,6 @@ on:
         default: "."
 permissions:
   contents: read
-concurrency:
-  group: python-audit-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   audit:
     runs-on: ubuntu-latest
@@ -37,6 +39,11 @@ jobs:
           python-version: ${{ inputs.python-version }}
       - name: Install pip-audit
         run: python -m pip install --upgrade pip pip-audit
+      - name: Install project for environment audit
+        if: inputs.requirements-file == ''
+        env:
+          INSTALL_COMMAND: ${{ inputs.install-command }}
+        run: bash -euo pipefail -c "$INSTALL_COMMAND"
       - name: Audit dependencies
         env:
           REQUIREMENTS_FILE: ${{ inputs.requirements-file }}

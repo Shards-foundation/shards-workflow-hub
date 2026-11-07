@@ -14,9 +14,6 @@ on:
         default: warning
 permissions:
   contents: read
-concurrency:
-  group: shellcheck-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   lint:
     runs-on: ubuntu-latest

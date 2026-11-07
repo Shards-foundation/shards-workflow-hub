@@ -14,9 +14,6 @@ on:
         default: HIGH,CRITICAL
 permissions:
   contents: read
-concurrency:
-  group: terraform-security-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   scan:
     runs-on: ubuntu-latest

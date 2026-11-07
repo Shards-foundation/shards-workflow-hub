@@ -14,9 +14,6 @@ on:
         default: ""
 permissions:
   contents: read
-concurrency:
-  group: spelling-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   spellcheck:
     runs-on: ubuntu-latest

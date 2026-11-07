@@ -8,10 +8,10 @@ on:
         required: false
         default: "8.0.x"
       solution:
-        description: Solution or project glob passed to dotnet test
+        description: Concrete solution, project or directory path (no shell globs)
         type: string
         required: false
-        default: "**/*.sln"
+        default: "."
       verify-format:
         description: Verify formatting with dotnet format
         type: boolean
@@ -19,9 +19,6 @@ on:
         default: false
 permissions:
   contents: read
-concurrency:
-  group: dotnet-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest

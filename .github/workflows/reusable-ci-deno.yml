@@ -16,12 +16,9 @@ on:
         description: Type-check command; empty disables type checking
         type: string
         required: false
-        default: deno check **/*.ts
+        default: deno check .
 permissions:
   contents: read
-concurrency:
-  group: deno-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   test:
     runs-on: ubuntu-latest

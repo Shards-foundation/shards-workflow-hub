@@ -10,13 +10,15 @@ on:
         description: CodeQL build mode
         type: string
         required: false
-        default: autobuild
+        default: none
+      build-command:
+        description: Build command to run when build-mode is manual
+        type: string
+        required: false
+        default: ""
 permissions:
   contents: read
   actions: read
-concurrency:
-  group: codeql-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   analyze:
     runs-on: ubuntu-latest
@@ -36,5 +38,13 @@ jobs:
       - name: Autobuild
         if: inputs.build-mode == 'autobuild'
         uses: github/codeql-action/autobuild@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+      - name: Require explicit build command for manual mode
+        if: inputs.build-mode == 'manual' && inputs.build-command == ''
+        run: exit 1
+      - name: Build project for manual analysis
+        if: inputs.build-mode == 'manual' && inputs.build-command != ''
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -euo pipefail -c "$BUILD_COMMAND"
       - name: Analyze
         uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4

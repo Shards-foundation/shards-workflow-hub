@@ -32,9 +32,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ct-playwright-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 
 jobs:
   end-to-end:

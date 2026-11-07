@@ -19,9 +19,6 @@ on:
         default: HIGH,CRITICAL
 permissions:
   contents: read
-concurrency:
-  group: container-scan-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   scan:
     runs-on: ubuntu-latest

@@ -19,9 +19,6 @@ on:
         default: linux/amd64
 permissions:
   contents: read
-concurrency:
-  group: container-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest

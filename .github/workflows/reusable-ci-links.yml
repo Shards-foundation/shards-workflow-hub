@@ -9,9 +9,6 @@ on:
         default: "--verbose --no-progress --accept 200,206,429 './**/*.md' './**/*.html'"
 permissions:
   contents: read
-concurrency:
-  group: links-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   check-links:
     runs-on: ubuntu-latest

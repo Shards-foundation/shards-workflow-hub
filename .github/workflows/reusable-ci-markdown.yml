@@ -14,9 +14,6 @@ on:
         default: "**/*.md"
 permissions:
   contents: read
-concurrency:
-  group: markdown-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   lint:
     runs-on: ubuntu-latest
