@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import json
 import pathlib
 import runpy
 import subprocess  # nosec B404: tests invoke local wrappers with fixed args and shell disabled.
@@ -158,6 +159,96 @@ class AutomationScriptTests(unittest.TestCase):
             )
             self.assertEqual(return_code, 1, stdout + stderr)
             self.assertIn("missing", (stdout + stderr).lower())
+
+    def test_secret_scan_detects_prefixed_and_json_keys(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-secret-formats-") as directory:
+            root = pathlib.Path(directory)
+            token = "synthetic-fixture-" + uuid.uuid4().hex
+            (root / "configuration.env").write_text(
+                f"GITHUB_TOKEN={token}\n"
+                "DB_PASSWORD='synthetic phrase value'\n"
+                "AWS_SECRET_ACCESS_KEY=synthetic-access-value-12345\n"
+                '{"password": "synthetic JSON value"}\n',
+                encoding="utf-8",
+            )
+            code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(root))
+            output = stdout + stderr
+            self.assertEqual(code, 1, output)
+            self.assertGreaterEqual(output.lower().count("pattern matched"), 4)
+            self.assertNotIn(token, output)
+            self.assertNotIn("synthetic JSON value", output)
+
+    def test_redact_log_preserves_json_and_quoted_values(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-redaction-") as directory:
+            root = pathlib.Path(directory)
+            original = root / "original.log"
+            redacted = root / "redacted.log"
+            original.write_text(
+                '{"token": "private JSON value"}\n'
+                "password: 'secret phrase with spaces'\n"
+                "GITHUB_TOKEN=synthetic-token-value\n",
+                encoding="utf-8",
+            )
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "redact_log.py", str(original), str(redacted)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            content = redacted.read_text(encoding="utf-8")
+            self.assertEqual(json.loads(content.splitlines()[0]), {"token": "[REDACTED]"})
+            self.assertIn("password: '[REDACTED]'", content)
+            self.assertIn("GITHUB_TOKEN=[REDACTED]", content)
+            self.assertNotIn("private JSON value", content)
+            self.assertNotIn("secret phrase with spaces", content)
+
+    def test_scanning_under_build_parent_does_not_skip_entire_root(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="automation-parent-path-") as directory:
+            base = pathlib.Path(directory)
+            root = base / "build" / "project"
+            root.mkdir(parents=True)
+            (root / "content.txt").write_text("backup me\n", encoding="utf-8")
+            (root / "settings.env").write_text(
+                "GITHUB_TOKEN=synthetic-secret-value-12345\n", encoding="utf-8"
+            )
+            code, stdout, stderr = _run_script(AUTOMATIONS / "secret_scan.py", str(root))
+            self.assertEqual(code, 1, stdout + stderr)
+            backup = base / "project-backup.zip"
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "directory_backup.py", str(root), str(backup)
+            )
+            self.assertEqual(code, 0, stdout + stderr)
+            with zipfile.ZipFile(backup) as archive:
+                self.assertEqual(
+                    set(archive.namelist()), {"content.txt", "settings.env"}
+                )
+
+    def test_http_retry_only_logs_terminal_failure_after_all_attempts(self) -> None:
+        class RecoveringHandler(BaseHTTPRequestHandler):
+            requests = 0
+
+            def do_GET(self) -> None:
+                type(self).requests += 1
+                self.send_response(503 if self.requests == 1 else 200)
+                self.end_headers()
+
+            def log_message(self, log_format, *args):
+                return
+
+        server = HTTPServer(("127.0.0.1", 0), RecoveringHandler)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        try:
+            code, stdout, stderr = _run_script(
+                AUTOMATIONS / "http_retry_check.py",
+                f"http://127.0.0.1:{server.server_port}/health",
+                "--attempts", "2", "--base-delay", "0", "--max-delay", "0",
+            )
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join(timeout=2)
+        self.assertEqual(code, 0, stdout + stderr)
+        self.assertNotIn("remained unhealthy", (stdout + stderr).lower())
+        self.assertEqual(RecoveringHandler.requests, 2)
 
     def test_workflow_action_audit_flags_mutable_action_refs(self) -> None:
         with tempfile.TemporaryDirectory(prefix="automation-workflow-test-") as directory:
