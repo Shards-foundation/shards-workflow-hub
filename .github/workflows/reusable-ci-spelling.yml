@@ -3,10 +3,10 @@ on:
   workflow_call:
     inputs:
       files:
-        description: Files to check (codespell glob syntax)
+        description: File or directory path to check (default scans repository recursively)
         type: string
         required: false
-        default: "**/*.md"
+        default: "."
       ignore-words-file:
         description: Optional codespell ignore-words file
         type: string
