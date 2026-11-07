@@ -26,7 +26,7 @@ from urllib.parse import urlsplit, urlunsplit
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Optional
 
 LOGGER = logging.getLogger("shards.automation")
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
@@ -211,7 +211,7 @@ def _resolve_directory(path: Path) -> Path:
     return resolved
 
 
-def _walk(path: Path, suffix: str | None = None) -> list[Path]:
+def _walk(path: Path, suffix: Optional[str] = None) -> list[Path]:
     if path.is_file():
         return [path] if not path.is_symlink() and (suffix is None or path.suffix.lower() == suffix.lower()) else []
     ignored = set(SKIP_DIRS)
