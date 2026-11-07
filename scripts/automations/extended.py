@@ -275,7 +275,7 @@ def cmd_secret_scan(args: argparse.Namespace) -> int:
     if args.max_file_mb <= 0:
         raise ValueError("--max-file-mb must be positive")
     extra_excludes = set(args.exclude)
-    matches = files_scanned = skipped = 0
+    matches = files_scanned = skipped = read_failures = 0
     for path in _walk(root):
         relative = path.relative_to(root).as_posix() if root.is_dir() else path.name
         if any(part in extra_excludes or part in SKIP_DIRS for part in (path.relative_to(root).parts if root.is_dir() else (path.name,))):
@@ -287,8 +287,9 @@ def cmd_secret_scan(args: argparse.Namespace) -> int:
                 continue
             data = path.read_bytes()
         except OSError as error:
-            LOGGER.warning("Unable to scan %s: %s", relative, error)
+            LOGGER.warning("Unable to scan %s: %s", relative, type(error).__name__)
             skipped += 1
+            read_failures += 1
             continue
         if b"\x00" in data:
             skipped += 1
@@ -300,8 +301,8 @@ def cmd_secret_scan(args: argparse.Namespace) -> int:
                     LOGGER.warning("Pattern matched: rule=%s file=%s line=%d (line content suppressed)", rule, relative, line_number)
                     matches += 1
                     break
-    LOGGER.info("Secret scan summary: files_scanned=%d skipped=%d findings=%d", files_scanned, skipped, matches)
-    return 1 if matches else 0
+    LOGGER.info("Secret scan summary: files_scanned=%d skipped=%d findings=%d read_failures=%d", files_scanned, skipped, matches, read_failures)
+    return 1 if matches or read_failures else 0
 
 
 def cmd_python_syntax_check(args: argparse.Namespace) -> int:
@@ -412,7 +413,7 @@ def cmd_http_retry_check(args: argparse.Namespace) -> int:
         except urllib.error.HTTPError as error:
             status = error.code
             error_text = f"HTTP {status}"
-            if 400 <= status < 500 and status != 429:
+            if 400 <= status < 500 and status not in (408, 429):
                 LOGGER.error("Endpoint returned permanent client error: url=%s status=%d", safe_url(url), status)
                 return 1
         except (urllib.error.URLError, TimeoutError, OSError) as error:
@@ -517,12 +518,13 @@ def cmd_manifest_verify(args: argparse.Namespace) -> int:
         for line_number, line in enumerate(stream, 1):
             if not line.strip():
                 continue
-            match = re.fullmatch(r"([a-fA-F0-9]{64})\s+[* ](.+)", line.rstrip("\r\n"))
+            match = re.fullmatch(r"([a-fA-F0-9]{64})(?:  (.+)| \*(.+))", line.rstrip("\r\n"))
             if not match:
                 LOGGER.error("Invalid checksum record: line=%d", line_number)
                 failures += 1
                 continue
-            expected, relative_name = match.groups()
+            expected = match.group(1)
+            relative_name = match.group(2) if match.group(2) is not None else match.group(3)
             candidate = (root / relative_name).resolve()
             try:
                 candidate.relative_to(root)
@@ -633,8 +635,8 @@ def cmd_csv_schema_check(args: argparse.Namespace) -> int:
 def cmd_json_format(args: argparse.Namespace) -> int:
     source = _resolve_file(args.input)
     target_path = args.output.expanduser().resolve()
-    if source == target_path:
-        raise ValueError("Input and output paths must be different")
+    if source == target_path or (target_path.exists() and source.samefile(target_path)):
+        raise ValueError("Input and output paths must reference different files")
     target = _new_output(args.output, args.force)
     with source.open("r", encoding="utf-8") as stream:
         value = json.load(stream)
@@ -717,7 +719,7 @@ def cmd_git_hygiene(args: argparse.Namespace) -> int:
     status = subprocess.run(["git", "-C", str(root), "status", "--short", "--untracked-files=all"], capture_output=True, text=True, timeout=20)  # nosec B603
     if status.returncode != 0:
         raise ValueError(status.stderr.strip() or f"Not a Git repository: {root}")
-    whitespace = subprocess.run(["git", "-C", str(root), "diff", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
+    whitespace = subprocess.run(["git", "-C", str(root), "diff", "HEAD", "--check"], capture_output=True, text=True, timeout=20)  # nosec B603
     if whitespace.returncode != 0:
         LOGGER.error("Git whitespace check failed")
         for line in whitespace.stdout.splitlines()[:50]:
@@ -1006,7 +1008,15 @@ def cmd_python_docstring_check(args: argparse.Namespace) -> int:
 
 def cmd_release_tag_check(args: argparse.Namespace) -> int:
     pattern = re.compile(r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$")
-    if not pattern.fullmatch(args.tag):
+    match = pattern.fullmatch(args.tag)
+    prerelease = match.group(4) if match else None
+    build = match.group(5) if match else None
+    invalid_pre = prerelease is not None and any(
+        not part or (part.isdigit() and len(part) > 1 and part.startswith("0"))
+        for part in prerelease.split(".")
+    )
+    invalid_build = build is not None and any(not part for part in build.split("."))
+    if not match or invalid_pre or invalid_build:
         LOGGER.error("Invalid semantic version tag: %s", args.tag)
         return 1
     LOGGER.info("Semantic version tag is valid: %s", args.tag)
@@ -1015,7 +1025,7 @@ def cmd_release_tag_check(args: argparse.Namespace) -> int:
 
 def cmd_requirements_pin_check(args: argparse.Namespace) -> int:
     path = _resolve_file(args.file)
-    pin = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?\s*==\s*[^\s;]+(?:\s*;.*)?$")
+    pin = re.compile(r"^[A-Za-z0-9_.-]+(?:\[[A-Za-z0-9_,.-]+\])?\s*==\s*[^\s;*]+(?:\s*;.*)?$")
     findings = checked = 0
     with path.open("r", encoding="utf-8") as stream:
         for line_number, raw_line in enumerate(stream, 1):
@@ -1053,8 +1063,8 @@ def cmd_shell_syntax_check(args: argparse.Namespace) -> int:
 def cmd_sqlite_backup(args: argparse.Namespace) -> int:
     source = _resolve_file(args.database)
     destination = args.output.expanduser().resolve()
-    if source == destination:
-        raise ValueError("Database and backup paths must be different")
+    if source == destination or (destination.exists() and source.samefile(destination)):
+        raise ValueError("Database and backup paths must reference different files")
     if destination.exists() and not args.force:
         raise FileExistsError(f"Refusing to overwrite {destination}; pass --force to replace it")
     destination.parent.mkdir(parents=True, exist_ok=True)
