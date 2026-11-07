@@ -1,0 +1,66 @@
+name: Reusable CI - Java
+on:
+  workflow_call:
+    inputs:
+      java-version:
+        description: JDK version
+        type: string
+        required: false
+        default: "21"
+      distribution:
+        description: JDK distribution supported by setup-java
+        type: string
+        required: false
+        default: temurin
+      build-tool:
+        description: Build tool, either maven or gradle
+        type: string
+        required: false
+        default: maven
+      working-directory:
+        description: Java project directory
+        type: string
+        required: false
+        default: "."
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up JDK
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: ${{ inputs.distribution }}
+          java-version: ${{ inputs.java-version }}
+          cache: ${{ inputs.build-tool }}
+      - name: Validate build tool
+        env:
+          BUILD_TOOL: ${{ inputs.build-tool }}
+        run: |
+          case "$BUILD_TOOL" in
+            maven|gradle) ;;
+            *) echo "Unsupported build-tool: $BUILD_TOOL"; exit 1 ;;
+          esac
+      - name: Test with Maven
+        if: inputs.build-tool == 'maven'
+        run: |
+          if [ -f ./mvnw ]; then
+            bash ./mvnw --batch-mode --no-transfer-progress verify
+          else
+            mvn --batch-mode --no-transfer-progress verify
+          fi
+      - name: Test with Gradle
+        if: inputs.build-tool == 'gradle'
+        run: |
+          if [ -f ./gradlew ]; then
+            bash ./gradlew --no-daemon check
+          else
+            gradle --no-daemon check
+          fi

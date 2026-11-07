@@ -1,0 +1,42 @@
+name: Reusable Security - Container Scan
+on:
+  workflow_call:
+    inputs:
+      dockerfile:
+        description: Dockerfile path
+        type: string
+        required: false
+        default: ./Dockerfile
+      context:
+        description: Docker build context
+        type: string
+        required: false
+        default: .
+      severity:
+        description: Comma-separated severities that fail the scan
+        type: string
+        required: false
+        default: HIGH,CRITICAL
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Build image locally
+        env:
+          DOCKERFILE: ${{ inputs.dockerfile }}
+          BUILD_CONTEXT: ${{ inputs.context }}
+          IMAGE_TAG: workflow-hub-scan:${{ github.sha }}
+        run: docker build --file "$DOCKERFILE" --tag "$IMAGE_TAG" "$BUILD_CONTEXT"
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: workflow-hub-scan:${{ github.sha }}
+          format: table
+          exit-code: "1"
+          ignore-unfixed: true
+          vuln-type: os,library
+          severity: ${{ inputs.severity }}

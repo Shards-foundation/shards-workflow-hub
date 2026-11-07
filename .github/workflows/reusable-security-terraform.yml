@@ -1,0 +1,30 @@
+name: Reusable Security - Terraform Configuration
+on:
+  workflow_call:
+    inputs:
+      scan-directory:
+        description: Directory to scan for Terraform misconfigurations
+        type: string
+        required: false
+        default: .
+      severity:
+        description: Comma-separated severity levels that fail the scan
+        type: string
+        required: false
+        default: HIGH,CRITICAL
+permissions:
+  contents: read
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Scan infrastructure configuration
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ inputs.scan-directory }}
+          format: table
+          exit-code: "1"
+          severity: ${{ inputs.severity }}

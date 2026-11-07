@@ -1,0 +1,63 @@
+name: Reusable Observability - HTTP Availability
+on:
+  workflow_call:
+    inputs:
+      url:
+        description: HTTP or HTTPS endpoint to check
+        type: string
+        required: true
+      expected-status:
+        description: Expected HTTP response status
+        type: string
+        required: false
+        default: "200"
+      attempts:
+        description: Maximum request attempts
+        type: number
+        required: false
+        default: 3
+      max-time-seconds:
+        description: Maximum duration of an individual request
+        type: number
+        required: false
+        default: 15
+permissions:
+  contents: read
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check endpoint with bounded retries
+        env:
+          HEALTH_URL: ${{ inputs.url }}
+          EXPECTED_STATUS: ${{ inputs.expected-status }}
+          MAX_ATTEMPTS: ${{ inputs.attempts }}
+          MAX_TIME: ${{ inputs.max-time-seconds }}
+        run: |
+          case "$HEALTH_URL" in https://*|http://*) ;; *) echo "::error::url must use http or https"; exit 2 ;; esac
+          case "$EXPECTED_STATUS" in [1-5][0-9][0-9]) ;; *) echo "::error::expected-status must be a three-digit HTTP status"; exit 2 ;; esac
+          if ! [[ "$MAX_ATTEMPTS" =~ ^[1-9][0-9]*$ ]] || ! [[ "$MAX_TIME" =~ ^[1-9][0-9]*$ ]]; then
+            echo "::error::attempts and max-time-seconds must be positive integers"
+            exit 2
+          fi
+          if [ "${#MAX_ATTEMPTS}" -gt 2 ] || [ "${#MAX_TIME}" -gt 2 ] || [ "$MAX_ATTEMPTS" -gt 5 ] || [ "$MAX_TIME" -gt 30 ]; then
+            echo "::error::attempts is capped at 5 and max-time-seconds at 30"
+            exit 2
+          fi
+          delay=1
+          for ((attempt=1; attempt<=MAX_ATTEMPTS; attempt++)); do
+            status=""
+            if status="$(curl --silent --output /dev/null --write-out '%{http_code}' --connect-timeout 5 --max-time "$MAX_TIME" "$HEALTH_URL" 2>/dev/null)" && [ "$status" = "$EXPECTED_STATUS" ]; then
+              echo "Endpoint healthy: expected status received on attempt $attempt"
+              exit 0
+            fi
+            echo "Endpoint check attempt $attempt/$MAX_ATTEMPTS returned status '${status:-no-response}'"
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              sleep "$delay"
+              delay=$((delay * 2))
+              if [ "$delay" -gt 8 ]; then delay=8; fi
+            fi
+          done
+          echo "::error::Endpoint did not return the expected status after $MAX_ATTEMPTS attempts"
+          exit 1

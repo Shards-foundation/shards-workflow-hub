@@ -1,0 +1,56 @@
+name: Reusable CI - PHP
+on:
+  workflow_call:
+    inputs:
+      php-version:
+        description: PHP version
+        type: string
+        required: false
+        default: "8.3"
+      extensions:
+        description: PHP extensions to install
+        type: string
+        required: false
+        default: none
+      test-command:
+        description: Test command run after Composer install
+        type: string
+        required: false
+        default: composer test
+      working-directory:
+        description: Directory containing composer.json
+        type: string
+        required: false
+        default: "."
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: ${{ inputs.php-version }}
+          extensions: ${{ inputs.extensions }}
+          tools: composer:v2
+          coverage: none
+      - name: Validate Composer configuration
+        run: composer validate --strict
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Run tests
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: |
+          if [ -z "$TEST_COMMAND" ]; then
+            echo "::error::test-command must not be empty"
+            exit 2
+          fi
+          bash -euo pipefail -c "$TEST_COMMAND"

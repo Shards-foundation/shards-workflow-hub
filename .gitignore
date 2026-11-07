@@ -58,3 +58,7 @@ screenshots/
 # Build artifacts
 *.tgz
 .cache/
+
+# Python automation scripts
+__pycache__/
+*.py[cod]

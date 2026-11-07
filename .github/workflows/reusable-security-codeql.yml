@@ -1,0 +1,50 @@
+name: Reusable Security - CodeQL
+on:
+  workflow_call:
+    inputs:
+      languages:
+        description: Comma-separated CodeQL languages (for example javascript-typescript,python)
+        type: string
+        required: true
+      build-mode:
+        description: CodeQL build mode
+        type: string
+        required: false
+        default: none
+      build-command:
+        description: Build command to run when build-mode is manual
+        type: string
+        required: false
+        default: ""
+permissions:
+  contents: read
+  actions: read
+jobs:
+  analyze:
+    runs-on: ${{ contains(inputs.languages, 'swift') && 'macos-latest' || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+        with:
+          languages: ${{ inputs.languages }}
+          build-mode: ${{ inputs.build-mode }}
+      - name: Autobuild
+        if: inputs.build-mode == 'autobuild'
+        uses: github/codeql-action/autobuild@33d7b85da1a04171e211befe2c739303b9a4c066 # v4
+      - name: Require explicit build command for manual mode
+        if: inputs.build-mode == 'manual' && inputs.build-command == ''
+        run: exit 1
+      - name: Build project for manual analysis
+        if: inputs.build-mode == 'manual' && inputs.build-command != ''
+        env:
+          BUILD_COMMAND: ${{ inputs.build-command }}
+        run: bash -euo pipefail -c "$BUILD_COMMAND"
+      - name: Analyze
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4

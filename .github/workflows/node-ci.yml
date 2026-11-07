@@ -21,7 +21,7 @@ jobs:
     name: Node CI
     permissions:
       contents: read
-    uses: Shards-foundation/.github/.github/workflows/node-ci.yml@main
+    uses: Shards-foundation/.github/.github/workflows/node-ci.yml@ed2058b1f36bfefa1ce847ff253c777f3df8cd5b # main
     with:
       node-versions: '["20","22"]'
       package-manager: auto

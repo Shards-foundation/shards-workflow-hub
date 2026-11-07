@@ -1,0 +1,38 @@
+name: Reusable CI - Pre-commit
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version for pre-commit
+        type: string
+        required: false
+        default: "3.12"
+      args:
+        description: Arguments passed to pre-commit run
+        type: string
+        required: false
+        default: --all-files
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Install pre-commit
+        run: python -m pip install --upgrade pre-commit
+      - name: Run configured hooks
+        env:
+          PRECOMMIT_ARGS: ${{ inputs.args }}
+        run: |
+          args_file="$(mktemp)"
+          trap 'rm -f "$args_file"' EXIT
+          python -c 'import os, shlex, sys; sys.stdout.buffer.write(b"".join(arg.encode() + bytes([0]) for arg in shlex.split(os.environ["PRECOMMIT_ARGS"])))' > "$args_file"
+          mapfile -d '' -t args < "$args_file"
+          pre-commit run "${args[@]}"

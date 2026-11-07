@@ -1,0 +1,29 @@
+name: Reusable CI - ShellCheck
+on:
+  workflow_call:
+    inputs:
+      scan-directory:
+        description: Directory to scan for shell scripts
+        type: string
+        required: false
+        default: .
+      severity:
+        description: Minimum issue severity (error, warning, info, style)
+        type: string
+        required: false
+        default: warning
+permissions:
+  contents: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@00cae500b08a931fb5698e11e79bfbd38e612a38 # 2.0.0
+        with:
+          scandir: ${{ inputs.scan-directory }}
+          check_together: true
+          severity: ${{ inputs.severity }}
+          ignore_paths: .git

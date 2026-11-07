@@ -1,0 +1,52 @@
+name: Reusable CI - Deno
+on:
+  workflow_call:
+    inputs:
+      deno-version:
+        description: Deno version
+        type: string
+        required: false
+        default: v2.x
+      working-directory:
+        description: Deno project directory
+        type: string
+        required: false
+        default: "."
+      test-command:
+        description: Deno test command including required permissions
+        type: string
+        required: false
+        default: "deno test --allow-read"
+      check-command:
+        description: Type-check command; empty disables type checking
+        type: string
+        required: false
+        default: deno check .
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Deno
+        uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed # v2
+        with:
+          deno-version: ${{ inputs.deno-version }}
+      - name: Check formatting
+        run: deno fmt --check
+      - name: Run linter
+        run: deno lint
+      - name: Type check
+        if: inputs.check-command != ''
+        env:
+          CHECK_COMMAND: ${{ inputs.check-command }}
+        run: bash -euo pipefail -c "$CHECK_COMMAND"
+      - name: Run tests
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -euo pipefail -c "$TEST_COMMAND"

@@ -1,0 +1,49 @@
+name: Reusable CI - Terraform
+on:
+  workflow_call:
+    inputs:
+      terraform-version:
+        description: Terraform CLI version
+        type: string
+        required: false
+        default: "1.9.8"
+      working-directory:
+        description: Directory containing Terraform configuration
+        type: string
+        required: false
+        default: "."
+      lockfile:
+        description: Require dependency lock file during init
+        type: boolean
+        required: false
+        default: true
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+          terraform_wrapper: false
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Require committed Terraform lockfile
+        if: inputs.lockfile
+        run: |
+          if [ ! -f .terraform.lock.hcl ]; then
+            echo "::error::Missing .terraform.lock.hcl"
+            exit 1
+          fi
+      - name: Initialize providers without backend
+        run: terraform init -backend=false ${{ inputs.lockfile && '-lockfile=readonly' || '' }}
+      - name: Validate configuration
+        run: terraform validate -no-color

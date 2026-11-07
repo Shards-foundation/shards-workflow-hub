@@ -1,0 +1,40 @@
+name: Reusable CI - Ruby
+on:
+  workflow_call:
+    inputs:
+      ruby-version:
+        description: Ruby version
+        type: string
+        required: false
+        default: "3.3"
+      working-directory:
+        description: Directory containing Gemfile
+        type: string
+        required: false
+        default: "."
+      test-command:
+        description: Test command run through Bundler
+        type: string
+        required: false
+        default: bundle exec rake test
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94 # v1
+        with:
+          ruby-version: ${{ inputs.ruby-version }}
+          bundler-cache: true
+          working-directory: ${{ inputs.working-directory }}
+      - name: Run tests
+        env:
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -euo pipefail -c "$TEST_COMMAND"

@@ -1,0 +1,47 @@
+name: Reusable CI - Rust
+on:
+  workflow_call:
+    inputs:
+      toolchain:
+        description: Rust toolchain channel or version
+        type: string
+        required: false
+        default: stable
+      working-directory:
+        description: Cargo project directory
+        type: string
+        required: false
+        default: "."
+      run-clippy:
+        description: Run Clippy with warnings denied
+        type: boolean
+        required: false
+        default: true
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: ${{ inputs.toolchain }}
+          components: rustfmt, clippy
+      - name: Cache Cargo build artifacts
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        with:
+          workspaces: ${{ inputs.working-directory }}
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Run Clippy
+        if: inputs.run-clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run tests
+        run: cargo test --all-features

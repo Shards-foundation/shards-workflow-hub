@@ -1,0 +1,22 @@
+name: Reusable CI - Documentation Links
+on:
+  workflow_call:
+    inputs:
+      args:
+        description: Full replacement lychee argument string (including file globs)
+        type: string
+        required: false
+        default: "--verbose --no-progress --accept 200,206,429 './**/*.md' './**/*.html'"
+permissions:
+  contents: read
+jobs:
+  check-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Check Markdown links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          args: ${{ inputs.args }}
+          fail: true

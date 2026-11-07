@@ -1,0 +1,36 @@
+name: Reusable Maintenance - Stale Labels
+on:
+  workflow_call:
+    inputs:
+      days-before-stale:
+        description: Inactive days before applying a stale label
+        type: number
+        required: false
+        default: 60
+      stale-label:
+        description: Label applied to inactive issues and pull requests
+        type: string
+        required: false
+        default: stale
+permissions:
+  issues: write
+  pull-requests: write
+concurrency:
+  group: stale-labels-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  label-stale:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Apply stale labels without closing items
+        uses: actions/stale@4391f3da665fdf50b6810c1a66712fb9ba21aa93 # v11
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-stale: ${{ inputs.days-before-stale }}
+          days-before-close: -1
+          stale-issue-label: ${{ inputs.stale-label }}
+          stale-pr-label: ${{ inputs.stale-label }}
+          stale-issue-message: This item has had no activity recently and was labeled stale. It will not be closed automatically.
+          stale-pr-message: This pull request has had no activity recently and was labeled stale. It will not be closed automatically.
+          remove-stale-when-updated: true

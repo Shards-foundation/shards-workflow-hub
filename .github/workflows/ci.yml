@@ -11,6 +11,32 @@ permissions:
   contents: read
 
 jobs:
+  validate-reusable-workflows:
+    name: Validate automation catalog (Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python: "3.9"
+            os: ubuntu-22.04
+          - python: "3.13"
+            os: ubuntu-26.04
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check Python source compilation
+        run: python -m compileall -q scripts/automations scripts/test_automations.py scripts/test-reusable-workflows.py
+      - name: Run catalog tests
+        run: |
+          python scripts/test-reusable-workflows.py
+          python scripts/test_automations.py
+
   ci:
     uses: ./.github/workflows/reusable-ci-node.yml
     with:
