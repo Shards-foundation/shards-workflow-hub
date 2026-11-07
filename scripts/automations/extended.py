@@ -31,7 +31,15 @@ from typing import Any, Optional
 LOGGER = logging.getLogger("shards.automation")
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build"}
 SECRET_RULES = (
-    ("credential-assignment", re.compile(r"(?i)\b(?:api[_-]?key|secret|token|password|passwd|private[_-]?key)\s*[:=]\s*['\"]?[^\s,;'\"]{8,}")),
+    ("credential-assignment", re.compile(
+        r"""(?ix)
+        (?<![A-Za-z0-9_])
+        (?:[A-Za-z][A-Za-z0-9]*[_-])*
+        (?:api[_-]?key|secret(?:[_-]access[_-]key|[_-]key)?|token|password|passwd|private[_-]?key)
+        ['"]?\s*[:=]\s*
+        (?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^\s,;'"]{8,})
+        """
+    )),
     ("github-token", re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b")),
     ("aws-access-key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
 )
@@ -217,7 +225,7 @@ def _walk(path: Path, suffix: Optional[str] = None) -> list[Path]:
     ignored = set(SKIP_DIRS)
     result = []
     for candidate in path.rglob("*"):
-        if any(part in ignored for part in candidate.parts):
+        if any(part in ignored for part in candidate.relative_to(path).parts):
             continue
         if not candidate.is_symlink() and candidate.is_file() and (suffix is None or candidate.suffix.lower() == suffix.lower()):
             result.append(candidate)
@@ -270,7 +278,7 @@ def cmd_secret_scan(args: argparse.Namespace) -> int:
     matches = files_scanned = skipped = 0
     for path in _walk(root):
         relative = path.relative_to(root).as_posix() if root.is_dir() else path.name
-        if any(part in extra_excludes for part in path.parts) or any(part in SKIP_DIRS for part in path.parts):
+        if any(part in extra_excludes or part in SKIP_DIRS for part in (path.relative_to(root).parts if root.is_dir() else (path.name,))):
             skipped += 1
             continue
         try:
@@ -347,7 +355,7 @@ def cmd_filename_portability(args: argparse.Namespace) -> int:
         raise ValueError("--max-path must be at least 40")
     findings = 0
     for path in sorted(root.rglob("*")):
-        if any(part in SKIP_DIRS for part in path.parts):
+        if any(part in SKIP_DIRS for part in path.relative_to(root).parts):
             continue
         name = path.name
         stem = name.split(".", 1)[0].upper()
@@ -413,7 +421,7 @@ def cmd_http_retry_check(args: argparse.Namespace) -> int:
         if attempt < args.attempts:
             time.sleep(min(delay, args.max_delay))
             delay = min(max(delay * 2, args.base_delay), args.max_delay)
-        LOGGER.error("Endpoint remained unhealthy after %d attempts: url=%s", args.attempts, safe_url(url))
+    LOGGER.error("Endpoint remained unhealthy after %d attempts: url=%s", args.attempts, safe_url(url))
     return 1
 
 
@@ -558,7 +566,7 @@ def cmd_workflow_action_audit(args: argparse.Namespace) -> int:
         raise FileNotFoundError(f"No YAML workflow files found: {path}")
     findings = 0
     for workflow in sorted(set(files)):
-        if any(part in SKIP_DIRS for part in workflow.parts):
+        if any(part in SKIP_DIRS for part in workflow.relative_to(path if path.is_dir() else path.parent).parts):
             continue
         for line_number, line in enumerate(workflow.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
             match = ACTION_USE.match(line)
@@ -929,7 +937,7 @@ def cmd_path_case_check(args: argparse.Namespace) -> int:
     seen: dict[str, str] = {}
     findings = 0
     for path in sorted(root.rglob("*")):
-        if path.is_symlink() or any(part in SKIP_DIRS for part in path.parts):
+        if path.is_symlink() or any(part in SKIP_DIRS for part in path.relative_to(root).parts):
             continue
         relative = path.relative_to(root).as_posix()
         key = relative.casefold()
