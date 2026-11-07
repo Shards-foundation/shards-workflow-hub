@@ -23,7 +23,7 @@ import urllib.request
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Optional, Union
 
 from scripts.automations.extended import EXTENDED_HANDLERS, add_extended_parsers, require_http_url, safe_url
 
@@ -236,7 +236,7 @@ def cmd_csv_profile(args: argparse.Namespace) -> int:
     return 0
 
 
-def _csv_rows(path: Path) -> tuple[list[str], Iterable[dict[str, str | None]]]:
+def _csv_rows(path: Path) -> tuple[list[str], Iterable[dict[str, Optional[str]]]]:
     stream = path.open("r", encoding="utf-8-sig", newline="")
     reader = csv.DictReader(stream)
     if not reader.fieldnames:
@@ -245,7 +245,7 @@ def _csv_rows(path: Path) -> tuple[list[str], Iterable[dict[str, str | None]]]:
     return list(reader.fieldnames), _closing_rows(reader, stream)
 
 
-def _closing_rows(reader: csv.DictReader, stream: Any) -> Iterable[dict[str, str | None]]:
+def _closing_rows(reader: csv.DictReader, stream: Any) -> Iterable[dict[str, Optional[str]]]:
     try:
         yield from reader
     finally:
@@ -259,14 +259,14 @@ def cmd_csv_deduplicate(args: argparse.Namespace) -> int:
     headers, rows = _csv_rows(source)
     if args.key and args.key not in headers:
         raise ValueError(f"Unknown key column: {args.key}")
-    seen: set[tuple[str, ...] | str] = set()
+    seen: set[Union[tuple[str, ...], str]] = set()
     kept = duplicates = 0
     with target.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=headers, extrasaction="ignore")
         writer.writeheader()
         for row in rows:
             values = tuple((row.get(column) or "") for column in headers)
-            identity: tuple[str, ...] | str = (row.get(args.key) or "") if args.key else values
+            identity: Union[tuple[str, ...], str] = (row.get(args.key) or "") if args.key else values
             if identity in seen:
                 duplicates += 1
                 continue
@@ -314,7 +314,7 @@ def cmd_json_to_csv(args: argparse.Namespace) -> int:
     return 0
 
 
-def _walk_files(directory: Path, exclude: set[Path] | None = None) -> Iterable[Path]:
+def _walk_files(directory: Path, exclude: Optional[set[Path]] = None) -> Iterable[Path]:
     excluded = exclude or set()
     for path in sorted(directory.rglob("*")):
         if any(part in ARCHIVE_EXCLUDES for part in path.parts):
@@ -608,7 +608,7 @@ HANDLERS: dict[str, Callable[[argparse.Namespace], int]] = {
 HANDLERS.update(EXTENDED_HANDLERS)
 
 
-def main(argv: list[str] | None = None, forced_command: str | None = None) -> int:
+def main(argv: Optional[list[str]] = None, forced_command: Optional[str] = None) -> int:
     """Parse arguments, execute one command, and return a process exit status."""
     arguments = list(sys.argv[1:] if argv is None else argv)
     if forced_command is not None:
