@@ -39,7 +39,7 @@ jobs:
           test -n "$DD_API_KEY" || { echo "::error::Missing DD_API_KEY secret."; exit 1; }
           test -n "$DD_APP_KEY" || { echo "::error::Missing DD_APP_KEY secret."; exit 1; }
 
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Run Datadog Synthetic tests
         uses: DataDog/synthetics-ci-github-action@87b505388a22005bb8013481e3f73a367b9a53eb # v1.4.0

@@ -20,7 +20,7 @@ jobs:
       security-events: write
       actions: read
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Run Microsoft Security DevOps
         uses: microsoft/security-devops-action@v1.12.0
